@@ -9,7 +9,6 @@ from isaacgym.gymtorch import *
 from isaacgymenvs.utils.torch_jit_utils import *
 from tasks.base.vec_task import VecTask
 
-
 class Twip(VecTask):
 
     def __init__(self, cfg, sim_device, graphics_device_id, headless):
@@ -20,6 +19,10 @@ class Twip(VecTask):
         self.randomization_params = self.cfg["task"]["randomization_params"]
         self.randomize = self.cfg["task"]["randomize"]
         self.debug_viz = self.cfg["env"]["enableDebugVis"]
+        self.enable_plotting = self.cfg["env"]["enablePlotting"] # plots pitch and action over an episode for 1 env
+        if self.enable_plotting:
+            self.pitch_data = []
+            self.action_data = []
 
         # plane parameters
         self.plane_static_friction = self.cfg["env"]["plane"]["staticFriction"]
@@ -81,6 +84,23 @@ class Twip(VecTask):
         # If randomizing, apply once immediately on startup before the fist sim step
         if self.randomize:
             self.apply_randomizations(self.randomization_params)
+
+    def set_sim_params_up_axis(self, sim_params: gymapi.SimParams, axis: str) -> int:
+        """Set gravity based on up axis and return axis index.
+
+        Args:
+            sim_params: sim params to modify the axis for.
+            axis: axis to set sim params for.
+        Returns:
+            axis index for up axis.
+        """
+        if axis == 'z':
+            sim_params.up_axis = gymapi.UP_AXIS_Z
+            sim_params.gravity.x = 0
+            sim_params.gravity.y = 0
+            sim_params.gravity.z = -9.81
+            return 2
+        return 1
 
     def _create_ground_plane(self):
         plane_params = gymapi.PlaneParams()
@@ -201,6 +221,9 @@ class Twip(VecTask):
         x = torch.atan2(2*(ori_w*ori_x+ori_y*ori_z),1-2*(ori_x**2+ori_y**2)) #pitch (0 when vertical)
         self.obs_buf[env_ids,0] = x
 
+        if self.enable_plotting:
+            self.pitch_data.append(x.cpu()[0])
+
         # Get last velocity action as second input
         self.obs_buf[env_ids,1] = self.actions[env_ids,0]
 
@@ -213,6 +236,25 @@ class Twip(VecTask):
         return self.obs_buf
 
     def reset_idx(self, env_ids):
+        if self.enable_plotting:
+            import pandas as pd
+            import matplotlib.pyplot as plt
+            episode_data = pd.DataFrame({
+                "Pitch": self.pitch_data,
+                "Action": self.action_data,                
+            },
+            index=np.linspace(0,self.dt*(len(self.pitch_data)-1),len(self.pitch_data)),
+            )
+            print(episode_data.head())
+            plt.figure(0)
+            plt.title("Pitch over episode")
+            (episode_data["Pitch"].astype(float)*180/3.14159).plot()
+            plt.xlabel("Time (s)")
+            plt.ylabel("Pitch (degrees)")
+            plt.show()
+            self.pitch_data = []
+            self.action_data = []
+
         # Randomization can happen only at reset time, since it can reset actor positions on GPU
         if self.randomize:
             self.apply_randomizations(self.randomization_params)
@@ -246,7 +288,7 @@ class Twip(VecTask):
             positions[:, self.free_dofs] = 0
             self.dof_pos[env_ids] = positions
         else:
-            positions[:, :] = 0
+            self.dof_pos[env_ids,:] = 0
         
         # Set initial DOF velocity for wheels
         if self.randomize_velocity:
@@ -255,8 +297,8 @@ class Twip(VecTask):
             velocities[:, self.free_dofs] = 0
             self.dof_vel[env_ids] = velocities*self.max_velocity
         else:
-            velocities[:, :] = 0
-            self.dof_vel[env_ids] = velocities*self.max_velocity
+            velocities = torch.zeros((len(env_ids), self.num_dof), device=self.device)
+            self.dof_vel[env_ids] = 0*self.max_velocity
         self.actions[env_ids,0] = velocities[:,0] # set last action since we use this as input
 
         env_ids_int32 = env_ids.to(dtype=torch.int32)
@@ -294,6 +336,9 @@ class Twip(VecTask):
 
     def pre_physics_step(self, actions):
         self.actions = actions.clone().to(self.device)
+        if self.enable_plotting:
+            self.action_data.append(self.actions.cpu()[0,0])
+
         #print(self.actions)
         #self.actions[:] = 1
         dof_idx = list(range(self.num_dof))

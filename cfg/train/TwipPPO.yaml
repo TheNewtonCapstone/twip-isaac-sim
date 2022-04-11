@@ -69,3 +69,5 @@ params:
     clip_value: True
     seq_len: 4
     bounds_loss_coef: 0.0001
+    player:
+      games_num: 2000

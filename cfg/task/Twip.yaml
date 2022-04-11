@@ -9,6 +9,7 @@ env:
   envSpacing: 2
   episodeLength: 250
   enableDebugVis: False
+  enablePlotting: False
 
   # controller parameters
   numObservations: 2
