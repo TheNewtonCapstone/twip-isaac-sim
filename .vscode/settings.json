@@ -1,0 +1,5 @@
+{
+    "python.analysis.extraPaths": [
+        "./_isaac_sim/exts/omni.isaac.core"
+    ]
+}
