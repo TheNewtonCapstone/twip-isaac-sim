@@ -1,8 +1,0 @@
-[flake8]
-extend-ignore = 
-    # Some packages need to be solely imported for their side effects (for Isaac Sim)
-    F401, 
-    # Some packages need to be solely imported after some code for their side effects (for Isaac Sim)
-    E402, 
-    # Line length is not a problem for us
-    E501
