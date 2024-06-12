@@ -27,19 +27,17 @@ class BaseEnv(object):
         return
 
     def construct(self):
-        self.o_world.scene.add_ground_plane()
-
         import omni.kit.commands
 
         # Get stage handle
         stage = omni.usd.get_context().get_stage()
 
         # Enable physics
-        scene = UsdPhysics.Scene.Define(stage, Sdf.Path("/physicsScene"))
+        phys_scene = UsdPhysics.Scene.Define(stage, Sdf.Path("/physicsScene"))
 
         # Set gravity
-        scene.CreateGravityDirectionAttr().Set(Gf.Vec3f(0.0, 0.0, -1.0))
-        scene.CreateGravityMagnitudeAttr().Set(9.81)
+        phys_scene.CreateGravityDirectionAttr().Set(Gf.Vec3f(0.0, 0.0, -1.0))
+        phys_scene.CreateGravityMagnitudeAttr().Set(9.81)
 
         PhysxSchema.PhysxSceneAPI.Apply(stage.GetPrimAtPath("/physicsScene"))
         physxSceneAPI = PhysxSchema.PhysxSceneAPI.Get(stage, "/physicsScene")
@@ -48,6 +46,21 @@ class BaseEnv(object):
         physxSceneAPI.CreateEnableGPUDynamicsAttr(False)
         physxSceneAPI.CreateBroadphaseTypeAttr("MBP")
         physxSceneAPI.CreateSolverTypeAttr("TGS")
+
+        # Add sun
+        sun = UsdLux.DistantLight.Define(stage, Sdf.Path("/DistantLight"))
+        sun.CreateIntensityAttr(500)
+
+        # Add ground
+        omni.kit.commands.execute(
+            "AddGroundPlaneCommand",
+            stage=stage,
+            planePath="/planePath",
+            axis="Z",
+            size=1500.0,
+            position=Gf.Vec3f(0, 0, -0.2),
+            color=Gf.Vec3f(0.83, 0.4, 0.25),
+        )
 
     def step(self, _render):
         self.o_world.step(render=_render)
@@ -62,7 +75,22 @@ class BaseEnv(object):
         stage = omni.usd.get_context().get_stage()
 
         _agent.construct(stage)
-        pass
+
+        self.agent = _agent
+
+    def pre_play(self, _sim_app) -> None:
+        import omni.kit.commands
+
+        # Ensure we start clean
+        self.reset()
+
+        # Start simulation
+        omni.timeline.get_timeline_interface().play()
+
+        # Do one step so that physics get loaded & dynamic control works
+        _sim_app.update()
+
+        self.agent.pre_physics(_sim_app)
 
 
 world_settings = {
@@ -78,7 +106,7 @@ agent_settings = {}
 
 base_agent = BaseAgent(agent_settings)
 base_env.add_agent(base_agent)
-base_env.reset()
+base_env.pre_play(sim_app)
 
 while sim_app.is_running():
     base_env.step(_render=True)
