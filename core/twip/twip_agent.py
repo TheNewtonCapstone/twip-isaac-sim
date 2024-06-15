@@ -1,6 +1,6 @@
 import abc
 
-from tasks.base.base_agent import BaseAgent
+from core.base.base_agent import BaseAgent
 
 
 class TwipAgent(BaseAgent):
@@ -22,7 +22,7 @@ class TwipAgent(BaseAgent):
 
         status, stage_path = omni.kit.commands.execute(
             "URDFParseAndImportFile",
-            urdf_path="/home/nyquist/projects/twip-isaac-sim/tasks/twip/assets/twip.urdf",
+            urdf_path=self.config["twip_urdf_path"],
             import_config=import_config,
             get_articulation_root=True,
         )

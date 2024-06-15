@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 
 from omni.isaac.kit import SimulationApp
 
-from tasks.base.base_agent import BaseAgent
+from core.base.base_agent import BaseAgent
 
 # TODO: separate into 3 classes: BaseEnv, BaseTask, BaseAgent
 # BaseEnv: contains the world, agents and settings

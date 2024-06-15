@@ -1,8 +1,15 @@
+import os
+
 import isaacsim
 from omni.isaac.kit import SimulationApp
 
-from tasks.envs.generic_env import GenericEnv
-from tasks.twip.twip_agent import TwipAgent
+from core.envs.generic_env import GenericEnv
+from core.twip.twip_agent import TwipAgent
+
+
+def get_current_path() -> str:
+    return os.path.dirname(os.path.realpath(__file__))
+
 
 world_settings = {
     "physics_dt": 1.0 / 60.0,
@@ -19,7 +26,9 @@ if __name__ == "__main__":
     base_env = GenericEnv(world_settings)
     base_env.construct()
 
-    agent_settings = {}
+    agent_settings = {
+        "twip_urdf_path": os.path.join(get_current_path(), "assets/twip.urdf"),
+    }
 
     base_agent = TwipAgent(agent_settings)
     base_env.add_agent(base_agent)
