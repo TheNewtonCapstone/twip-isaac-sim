@@ -1,8 +1,8 @@
 import gc
 from abc import ABC, abstractmethod
 
-from tasks.base.base_agent import BaseAgent
-from tasks.base.base_env import BaseEnv
+from core.base.base_agent import BaseAgent
+from core.base.base_env import BaseEnv
 
 
 class GenericEnv(BaseEnv):

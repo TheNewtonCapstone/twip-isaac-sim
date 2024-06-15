@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 
-
 class BaseAgent(ABC):
     def __init__(self, _config) -> None:
         self.config = _config
