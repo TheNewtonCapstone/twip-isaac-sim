@@ -1,16 +1,9 @@
 import gc
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
-import isaacsim
 from omni.isaac.kit import SimulationApp
 
-config = {"headless": False}
-sim_app = SimulationApp(config)
-
-from omni.isaac.core import World
-from pxr import Gf, PhysxSchema, Sdf, UsdLux, UsdPhysics
-
-from base_agent import BaseAgent
+from tasks.base.base_agent import BaseAgent
 
 # TODO: separate into 3 classes: BaseEnv, BaseTask, BaseAgent
 # BaseEnv: contains the world, agents and settings
@@ -20,13 +13,17 @@ from base_agent import BaseAgent
 # Need to figure out how abc works in python and how to use it to enforce the structure of the classes
 
 
-class BaseEnv(object):
+class BaseEnv(ABC):
     def __init__(self, _o_world_settings) -> None:
+        from omni.isaac.core import World
+
         self.o_world_settings = _o_world_settings
         self.o_world = World()
         return
 
+    @abstractmethod
     def construct(self):
+        from pxr import Gf, PhysxSchema, Sdf, UsdLux, UsdPhysics
         import omni.kit.commands
 
         # Get stage handle
@@ -62,12 +59,15 @@ class BaseEnv(object):
             color=Gf.Vec3f(0.83, 0.4, 0.25),
         )
 
+    @abstractmethod
     def step(self, _render):
         self.o_world.step(render=_render)
 
+    @abstractmethod
     def reset(self):
         self.o_world.reset()
 
+    @abstractmethod
     def add_agent(self, _agent: BaseAgent) -> bool:
         import omni.kit.commands
 
@@ -78,7 +78,8 @@ class BaseEnv(object):
 
         self.agent = _agent
 
-    def pre_play(self, _sim_app) -> None:
+    @abstractmethod
+    def pre_play(self, _sim_app: SimulationApp) -> None:
         import omni.kit.commands
 
         # Ensure we start clean
@@ -91,22 +92,3 @@ class BaseEnv(object):
         _sim_app.update()
 
         self.agent.pre_physics(_sim_app)
-
-
-world_settings = {
-    "physics_dt": 1.0 / 60.0,
-    "stage_units_in_neters": 1.0,
-    "rendering_dt": 1.0 / 60.0,
-}
-
-base_env = BaseEnv(world_settings)
-base_env.construct()
-
-agent_settings = {}
-
-base_agent = BaseAgent(agent_settings)
-base_env.add_agent(base_agent)
-base_env.pre_play(sim_app)
-
-while sim_app.is_running():
-    base_env.step(_render=True)
