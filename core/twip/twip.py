@@ -11,6 +11,10 @@ def get_current_path() -> str:
     return os.path.dirname(os.path.realpath(__file__))
 
 
+app_settings = {
+    "headless": False,
+}
+
 world_settings = {
     "physics_dt": 1.0 / 60.0,
     "stage_units_in_meters": 1.0,
@@ -22,8 +26,7 @@ twip_settings = {
 }
 
 if __name__ == "__main__":
-    config = {"headless": False}
-    sim_app = SimulationApp(config)
+    sim_app = SimulationApp(app_settings)
 
     env = GenericEnv(world_settings)
     env.construct()
