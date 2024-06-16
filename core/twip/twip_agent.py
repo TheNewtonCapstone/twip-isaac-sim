@@ -47,6 +47,7 @@ class TwipAgent(BaseAgent):
 
         self.set_stiffness(WheelDriveType.LEFT, 0)
 
+        # needs to be imported within the function because of import dependencies
         from omni.isaac.sensor import IMUSensor
 
         self.imu = IMUSensor(

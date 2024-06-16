@@ -19,6 +19,8 @@ class BaseEnv(ABC):
 
         self.o_world_settings = _o_world_settings
         self.o_world = World()
+
+        self.env_initialized = False
         return
 
     @abstractmethod
@@ -92,3 +94,5 @@ class BaseEnv(ABC):
         _sim_app.update()
 
         self.agent.pre_physics(_sim_app)
+
+        self.env_initialized = True
