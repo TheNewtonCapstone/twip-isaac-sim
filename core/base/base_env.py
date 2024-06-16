@@ -25,7 +25,7 @@ class BaseEnv(ABC):
 
     @abstractmethod
     def construct(self):
-        from pxr import Gf, PhysxSchema, Sdf, UsdLux, UsdPhysics
+        from pxr import Gf, PhysxSchema, Sdf, UsdLux, UsdPhysics, PhysicsSchemaTools
         import omni.kit.commands
 
         # Get stage handle
@@ -42,23 +42,22 @@ class BaseEnv(ABC):
         physxSceneAPI = PhysxSchema.PhysxSceneAPI.Get(stage, "/physicsScene")
         physxSceneAPI.CreateEnableCCDAttr(True)
         physxSceneAPI.CreateEnableStabilizationAttr(True)
-        physxSceneAPI.CreateEnableGPUDynamicsAttr(False)
+        physxSceneAPI.CreateEnableGPUDynamicsAttr(True)
         physxSceneAPI.CreateBroadphaseTypeAttr("MBP")
         physxSceneAPI.CreateSolverTypeAttr("TGS")
 
         # Add sun
-        sun = UsdLux.DistantLight.Define(stage, Sdf.Path("/DistantLight"))
+        sun = UsdLux.DistantLight.Define(stage, Sdf.Path("/distantLight"))
         sun.CreateIntensityAttr(500)
 
         # Add ground
-        omni.kit.commands.execute(
-            "AddGroundPlaneCommand",
-            stage=stage,
-            planePath="/planePath",
-            axis="Z",
-            size=1500.0,
-            position=Gf.Vec3f(0, 0, -0.2),
-            color=Gf.Vec3f(0.83, 0.4, 0.25),
+        PhysicsSchemaTools.addGroundPlane(
+            stage,
+            "/world/groundPlane",
+            "Z",
+            100,
+            Gf.Vec3f(0.0),
+            Gf.Vec3f(0.84, 0.40, 0.35),
         )
 
     @abstractmethod

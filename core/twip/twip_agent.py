@@ -10,6 +10,10 @@ class WheelDriveType(Enum):
     RIGHT = 1
 
 
+# when implementing ROS, check the following link: https://github.com/ros2/examples/blob/rolling/rclpy/topics/minimal_publisher
+# probably a good idea to make separate wrapper classes for each joint (or rather, for each object that will publish/subscribe to ROS messages)
+
+
 class TwipAgent(BaseAgent):
     def __init__(self, _config) -> None:
         super().__init__(_config)
@@ -70,7 +74,7 @@ class TwipAgent(BaseAgent):
         art.initialize()
 
     def get_observations(self) -> np.array:
-        print(self.imu.get_current_frame())
+        self.imu.get_current_frame()
 
         return np.array([])
 
