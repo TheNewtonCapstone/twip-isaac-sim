@@ -1,8 +1,7 @@
 import os
 import hydra
 
-import isaacsim
-from omni.isaac.kit import SimulationApp
+from isaacsim import SimulationApp
 
 from core.envs.generic_env import GenericEnv
 from core.twip.twip_agent import TwipAgent, WheelDriveType
@@ -28,6 +27,11 @@ if __name__ == "__main__":
 
     env = GenericEnv(world_settings)
     env.construct()
+
+    # task = BaseTask()
+    # task.construct()
+    # task.add_agent()
+    # task.prepare()
 
     twip = TwipAgent(twip_settings)
     env.add_agent(twip)
