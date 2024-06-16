@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+import numpy as np
+
 
 class BaseAgent(ABC):
     def __init__(self, _config) -> None:
@@ -11,4 +13,8 @@ class BaseAgent(ABC):
 
     @abstractmethod
     def pre_physics(self, _sim_app) -> None:
+        pass
+
+    @abstractmethod
+    def get_observations(self) -> np.array:
         pass

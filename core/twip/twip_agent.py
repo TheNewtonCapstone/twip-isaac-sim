@@ -1,6 +1,13 @@
 import abc
+from enum import Enum
+import numpy as np
 
 from core.base.base_agent import BaseAgent
+
+
+class WheelDriveType(Enum):
+    LEFT = 0
+    RIGHT = 1
 
 
 class TwipAgent(BaseAgent):
@@ -28,27 +35,55 @@ class TwipAgent(BaseAgent):
         )
         self.stage_path = stage_path
 
-        lwd = UsdPhysics.DriveAPI.Get(
+        self.lwd = UsdPhysics.DriveAPI.Get(
             stage.GetPrimAtPath(self.stage_path + "/lwheel"), "angular"
         )
-        rwd = UsdPhysics.DriveAPI.Get(
+        self.rwd = UsdPhysics.DriveAPI.Get(
             stage.GetPrimAtPath(self.stage_path + "/rwheel"), "angular"
         )
 
-        lwd.GetTargetVelocityAttr().Set(50)
-        rwd.GetTargetVelocityAttr().Set(50)
+        self.set_damping(WheelDriveType.LEFT, 15000)
+        self.set_damping(WheelDriveType.RIGHT, 15000)
 
-        lwd.GetDampingAttr().Set(15000)
-        rwd.GetDampingAttr().Set(15000)
+        self.set_stiffness(WheelDriveType.LEFT, 0)
 
-        lwd.GetStiffnessAttr().Set(0)
-        rwd.GetStiffnessAttr().Set(0)
+        from omni.isaac.sensor import IMUSensor
+
+        self.imu = IMUSensor(
+            prim_path=self.stage_path + "/imu",
+            name="imu",
+            frequency=60,
+            translation=np.array([0, 0, 0]),
+            orientation=np.array([1, 0, 0, 0]),
+            linear_acceleration_filter_size=10,
+            angular_velocity_filter_size=10,
+            orientation_filter_size=10,
+        )
 
     def pre_physics(self, _sim_app) -> None:
-        # this only works after SimulationApp is initialized (to be done in scripts that import this class)
-        from omni.isaac.core.articulations import Articulation
-
         super().pre_physics(_sim_app)
+
+        from omni.isaac.core.articulations import Articulation
 
         art = Articulation(prim_path=self.stage_path)
         art.initialize()
+
+    def get_observations(self) -> np.array:
+        print(self.imu.get_current_frame())
+
+        return np.array([])
+
+    def set_damping(self, type: WheelDriveType, val) -> None:
+        (self.lwd if type == WheelDriveType.LEFT else self.rwd).GetDampingAttr().Set(
+            val
+        )
+
+    def set_stiffness(self, type: WheelDriveType, val) -> None:
+        (self.lwd if type == WheelDriveType.LEFT else self.rwd).GetStiffnessAttr().Set(
+            val
+        )
+
+    def set_target_velocity(self, type: WheelDriveType, val) -> None:
+        (
+            self.lwd if type == WheelDriveType.LEFT else self.rwd
+        ).GetTargetVelocityAttr().Set(val)
