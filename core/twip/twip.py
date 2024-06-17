@@ -1,8 +1,9 @@
 import os
 import hydra
+import torch
 
 from isaacsim import SimulationApp
-import torch
+from rl_games.torch_runner import Runner
 
 from core.envs.generic_env import GenericEnv
 from core.twip.twip_agent import TwipAgent, WheelDriveType
@@ -42,7 +43,11 @@ if __name__ == "__main__":
     twip.set_target_velocity(WheelDriveType.LEFT, 0)
     twip.set_target_velocity(WheelDriveType.RIGHT, 1200)
 
-    while sim_app.is_running():
+    runner = Runner()
+
+    runner.run({"train": True, "play": False})
+
+    while False and sim_app.is_running():
         task.step(torch.zeros(1))
 
         if env.o_world.current_time % 10 <= 5:
