@@ -1,5 +1,7 @@
 import gc
 from abc import ABC, abstractmethod
+from typing import Dict, Tuple, Any
+import torch
 
 from omni.isaac.kit import SimulationApp
 
@@ -24,7 +26,7 @@ class BaseEnv(ABC):
         return
 
     @abstractmethod
-    def construct(self):
+    def construct(self) -> bool:
         from pxr import Gf, PhysxSchema, Sdf, UsdLux, UsdPhysics, PhysicsSchemaTools
         import omni.kit.commands
 
@@ -60,12 +62,18 @@ class BaseEnv(ABC):
             Gf.Vec3f(0.84, 0.40, 0.35),
         )
 
-    @abstractmethod
-    def step(self, _render):
-        self.o_world.step(render=_render)
+        return True
 
     @abstractmethod
-    def reset(self):
+    def step(
+        self, _render
+    ) -> Tuple[Dict[str, torch.Tensor], torch.Tensor, torch.Tensor, Dict[str, Any]]:
+        return self.o_world.step(render=_render)
+
+    @abstractmethod
+    def reset(
+        self,
+    ) -> Dict[str, torch.Tensor]:
         self.o_world.reset()
 
     @abstractmethod
@@ -80,7 +88,7 @@ class BaseEnv(ABC):
         self.agent = _agent
 
     @abstractmethod
-    def pre_play(self, _sim_app: SimulationApp) -> None:
+    def prepare(self, _sim_app: SimulationApp) -> None:
         import omni.kit.commands
 
         # Ensure we start clean
