@@ -3,18 +3,20 @@ import gymnasium as gm
 import numpy as np
 import torch
 from typing import Dict, Any, Tuple
+
+from rl_games.common.ivecenv import IVecEnv
+
 from core.base.base_env import BaseEnv
 
 
-class BaseTask(object):
+class BaseTask(IVecEnv):
     def __init__(self, _base_env: BaseEnv):
         self.config = {}
 
         self.base_env = _base_env
         pass
 
-    # @abstractmethod
-    def load_config(self):
+    def load_config(self, config: Dict) -> None:
         self.config["device"] = "cuda:0"
         self.config["graphics_device_id"] = 0
         self.config["headless"] = False
@@ -47,36 +49,11 @@ class BaseTask(object):
 
         return self.config
 
-    # @abstractmethod
-    def allocate_buffers(self) -> None:
-        # allocates memory on the GPU
-        self.obs_buf = torch.zeros(
-            (self.config["num_envs"], self.config["num_observations"]),
-            device=self.config["device"],
-            dtype=torch.float,
-        )
-        self.states_buf = torch.zeros(
-            (self.config["num_envs"], self.config["num_states"]),
-            device=self.config["device"],
-            dtype=torch.float,
-        )
-        self.rew_buf = torch.zeros(
-            self.config["num_envs"], device=self.device, dtype=torch.float
-        )
-        self.reset_buf = torch.ones(
-            self.config["num_envs"], device=self.device, dtype=torch.long
-        )
-        self.timeout_buf = torch.zeros(
-            self.config["num_envs"], device=self.device, dtype=torch.long
-        )
-        self.progress_buf = torch.zeros(
-            self.config["num_envs"], device=self.device, dtype=torch.long
-        )
-        self.randomize_buf = torch.zeros(
-            self.config["num_envs"], device=self.device, dtype=torch.long
-        )
+    def construct(self) -> bool:
+        return self.base_env.construct()
 
-    # @abstractmethod
+    # RL-Games methods (required from IVecEnv)
+
     def step(
         self, actions: torch.Tensor
     ) -> Tuple[Dict[str, torch.Tensor], torch.Tensor, torch.Tensor, Dict[str, Any]]:
@@ -85,35 +62,51 @@ class BaseTask(object):
         # returns: obs, rewards, resets, info
         pass
 
-    # @abstractmethod
     def reset(self) -> Dict[str, torch.Tensor]:
         # resets a single environment
         # returns: the observations
         pass
 
-    # @abstractmethod
-    def reset_idx(self, env_ids: torch.Tensor):
-        # ?
-        # args: ids of the environments to reset
+    def seed(self, seed) -> None:
         pass
 
-    # @property
-    def observation_space(self) -> gm.spaces:
+    def has_action_masks(self) -> bool:
+        return False
+
+    def get_number_of_agents(self) -> int:
+        # we only support 1 agent in the env for now
+        return 1
+
+    def get_env_info(self) -> Dict:
+        return {
+            "observation_space": self.config["observation_space"],
+            "action_space": self.config["action_space"],
+            "state_space": self.config["state_space"],
+        }
+
+    def set_train_info(self, env_frames, *args, **kwargs):
+        pass
+
+    def get_env_state(self):
+        return None
+
+    def set_env_state(self, env_state) -> None:
+        pass
+
+    def get_observation_space(self) -> gm.spaces:
         return self.config["observation_space"]
 
-    # a bunch of getters were forgotten right about the time this was being written
+    def get_action_space(self) -> gm.Space:
+        return self.config["action_space"]
 
-    # this is the equivalent of create_sim() in the original class
-    def construct(self):
-        self.base_env.construct()  # aunque no es la buena cosa, cambiaremos despues
+    def get_state_space(self) -> gm.spaces.Box:
+        return self.config["state_space"]
 
-    # the following were included in the original class, but we've failed to see their utility
-    # def set_sim_params_up_axis()
+    def get_num_envs(self) -> int:
+        return self.config["num_envs"]
 
-    # the following were included in the original class, but we don't know what they do exactly
-    def get_state(self):
-        # returns: observations (clamped apparently)
-        pass
+    def get_device(self) -> str:
+        return self.config["device"]
 
 
 base_task = BaseTask()
