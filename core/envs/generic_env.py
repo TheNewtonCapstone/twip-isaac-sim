@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 import torch
 from typing import Dict, Tuple, Any
 
+from isaacsim import SimulationApp
+
 from core.base.base_agent import BaseAgent
 from core.base.base_env import BaseEnv
 
@@ -11,8 +13,8 @@ class GenericEnv(BaseEnv):
     def __init__(self, _o_world_settings):
         super().__init__(_o_world_settings)
 
-    def construct(self) -> bool:
-        return super().construct()
+    def construct(self, sim_app: SimulationApp) -> bool:
+        return super().construct(sim_app)
 
     def step(
         self, _render
@@ -27,5 +29,5 @@ class GenericEnv(BaseEnv):
     def add_agent(self, _agent: BaseAgent) -> bool:
         return super().add_agent(_agent)
 
-    def prepare(self, _sim_app) -> None:
-        return super().prepare(_sim_app)
+    def prepare(self) -> None:
+        return super().prepare()

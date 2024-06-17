@@ -22,13 +22,12 @@ class BaseEnv(ABC):
         self.o_world_settings = _o_world_settings
         self.o_world = World()
 
-        self.env_initialized = False
-        return
-
     @abstractmethod
-    def construct(self) -> bool:
+    def construct(self, sim_app: SimulationApp) -> bool:
         from pxr import Gf, PhysxSchema, Sdf, UsdLux, UsdPhysics, PhysicsSchemaTools
         import omni.kit.commands
+
+        self.sim_app = sim_app
 
         # Get stage handle
         stage = omni.usd.get_context().get_stage()
@@ -88,7 +87,7 @@ class BaseEnv(ABC):
         self.agent = _agent
 
     @abstractmethod
-    def prepare(self, _sim_app: SimulationApp) -> None:
+    def prepare(self) -> None:
         import omni.kit.commands
 
         # Ensure we start clean
@@ -98,8 +97,6 @@ class BaseEnv(ABC):
         omni.timeline.get_timeline_interface().play()
 
         # Do one step so that physics get loaded & dynamic control works
-        _sim_app.update()
+        self.sim_app.update()
 
-        self.agent.pre_physics(_sim_app)
-
-        self.env_initialized = True
+        self.agent.prepare(self.sim_app)
