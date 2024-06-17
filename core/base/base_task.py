@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod, property
 import gymnasium as gm
 import numpy as np
 import torch
@@ -14,40 +13,25 @@ class BaseTask(IVecEnv):
         self.config = {}
 
         self.base_env = _base_env
-        pass
 
-    def load_config(self, config: Dict) -> None:
-        self.config["device"] = "cuda:0"
-        self.config["graphics_device_id"] = 0
-        self.config["headless"] = False
+    def load_config(self, config: Dict[str, Any]):
+        self.config: Dict[str, Any] = config
 
-        self.config["num_env"] = 1024
+        self.device: str = self.config["device"]
+        self.headless: bool = self.config["headless"]
 
-        self.config["num_agents"] = 1
-        self.config["num_observations"] = 2
-        self.config["num_actions"] = 1  # not sure why it's 1
-        self.config["num_states"] = 0
+        self.num_envs: int = self.config["num_envs"]
 
-        self.config["observation_space"] = gm.spaces.Box(
-            np.ones(self.config["num_observations"]) * -np.Inf,
-            np.ones(self.config["num_observations"]) * np.Inf,
-        )
-        self.config["action_space"] = gm.spaces.Box(
-            np.ones(self.config["num_actions"]) * -1.0,
-            np.ones(self.config["num_actions"]) * 1.0,
-        )  # not sure why it's different from the other spaces
-        self.config["state_space"] = gm.spaces.Box(
-            np.ones(self.config["num_states"]) * -np.Inf,
-            np.ones(self.config["num_states"]) * np.Inf,
-        )  # still not sure what a state is
+        self.num_agents: int = self.config["num_agents"]
+        self.num_observations: int = self.config["num_observations"]
+        self.num_actions: int = self.config["num_actions"]
+        self.num_states: int = self.config["num_states"]
 
-        # task-specific config
-        self.config["domain_randomization"] = {}
-        self.config["extern_actor_params"] = {}  # no se
-        for i in range(self.config["num_env"]):
-            self.config["extern_actor_params"][i] = None  # tampoco se
+        self.observation_space: gm.spaces.Box = self.config["observation_space"]
+        self.action_space: gm.spaces.Box = self.config["action_space"]
+        self.state_space: gm.spaces.Box = self.config["state_space"]
 
-        return self.config
+        # rest of config inside self.config
 
     def construct(self) -> bool:
         return self.base_env.construct()
@@ -94,20 +78,16 @@ class BaseTask(IVecEnv):
         pass
 
     def get_observation_space(self) -> gm.spaces:
-        return self.config["observation_space"]
+        return self.observation_space
 
     def get_action_space(self) -> gm.Space:
-        return self.config["action_space"]
+        return self.action_space
 
     def get_state_space(self) -> gm.spaces.Box:
-        return self.config["state_space"]
+        return self.state_space
 
     def get_num_envs(self) -> int:
-        return self.config["num_envs"]
+        return self.num_envs
 
     def get_device(self) -> str:
-        return self.config["device"]
-
-
-base_task = BaseTask()
-print(base_task.load_config())
+        return self.device

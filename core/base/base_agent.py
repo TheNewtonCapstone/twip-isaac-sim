@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-import numpy as np
+import torch
 
 
 class BaseAgent(ABC):
@@ -12,9 +12,9 @@ class BaseAgent(ABC):
         pass
 
     @abstractmethod
-    def pre_physics(self, _sim_app) -> None:
+    def prepare(self, _sim_app) -> None:
         pass
 
     @abstractmethod
-    def get_observations(self) -> np.array:
+    def get_observations(self) -> torch.Tensor:
         pass

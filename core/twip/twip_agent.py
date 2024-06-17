@@ -1,6 +1,7 @@
 import abc
 from enum import Enum
 import numpy as np
+import torch
 
 from core.base.base_agent import BaseAgent
 
@@ -65,18 +66,18 @@ class TwipAgent(BaseAgent):
             orientation_filter_size=10,
         )
 
-    def pre_physics(self, _sim_app) -> None:
-        super().pre_physics(_sim_app)
+    def prepare(self, _sim_app) -> None:
+        super().prepare(_sim_app)
 
         from omni.isaac.core.articulations import Articulation
 
         art = Articulation(prim_path=self.stage_path)
         art.initialize()
 
-    def get_observations(self) -> np.array:
-        self.imu.get_current_frame()
+    def get_observations(self) -> torch.Tensor:
+        frame = self.imu.get_current_frame()
 
-        return np.array([])
+        return torch.from_numpy(frame["orientation"])
 
     def set_damping(self, type: WheelDriveType, val) -> None:
         (self.lwd if type == WheelDriveType.LEFT else self.rwd).GetDampingAttr().Set(

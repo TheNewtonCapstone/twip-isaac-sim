@@ -2,9 +2,11 @@ import os
 import hydra
 
 from isaacsim import SimulationApp
+import torch
 
 from core.envs.generic_env import GenericEnv
 from core.twip.twip_agent import TwipAgent, WheelDriveType
+from core.twip.generic_task import GenericTask
 
 
 def get_current_path() -> str:
@@ -29,24 +31,19 @@ if __name__ == "__main__":
     sim_app = SimulationApp(app_settings)
 
     env = GenericEnv(world_settings)
-    env.construct()
-
-    # task = BaseTask()
-    # task.construct()
-    # task.add_agent()
-    # task.prepare()
-
     twip = TwipAgent(twip_settings)
+
     env.add_agent(twip)
-    env.pre_play(sim_app)
+
+    task = GenericTask(env)
+    task.load_config()
+    task.construct(sim_app)
 
     twip.set_target_velocity(WheelDriveType.LEFT, 0)
     twip.set_target_velocity(WheelDriveType.RIGHT, 1200)
 
     while sim_app.is_running():
-        env.step(_render=True)
-
-        twip.get_observations()
+        task.step(torch.zeros(1))
 
         if env.o_world.current_time % 10 <= 5:
             twip.set_target_velocity(WheelDriveType.LEFT, 0)
