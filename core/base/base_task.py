@@ -44,12 +44,17 @@ class BaseTask(IVecEnv):
         # goes through a RL step (includes all the base RL things such as get obs, apply actions, etc.
         # args: actions to apply to the env
         # returns: obs, rewards, resets, info
-        pass
+
+        print(f"{self.__class__.__name__} step")
+        return
 
     def reset(self) -> Dict[str, torch.Tensor]:
         # resets a single environment
         # returns: the observations
-        pass
+
+        print(f"{self.__class__.__name__} reset")
+
+        return
 
     def seed(self, seed) -> None:
         pass
@@ -63,9 +68,9 @@ class BaseTask(IVecEnv):
 
     def get_env_info(self) -> Dict:
         return {
-            "observation_space": self.config["observation_space"],
-            "action_space": self.config["action_space"],
-            "state_space": self.config["state_space"],
+            "observation_space": self.observation_space,
+            "action_space": self.action_space,
+            "state_space": self.state_space,
         }
 
     def set_train_info(self, env_frames, *args, **kwargs):

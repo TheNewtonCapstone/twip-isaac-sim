@@ -25,7 +25,7 @@ class GenericTask(BaseTask):
         config["num_agents"] = 1
         config["num_observations"] = 2
         config["num_actions"] = 2
-        config["num_states"] = 0
+        config["num_states"] = 1
 
         config["observation_space"] = gm.spaces.Box(
             np.ones(config["num_observations"]) * -np.Inf,
@@ -42,6 +42,8 @@ class GenericTask(BaseTask):
 
         # task-specific config
         config["domain_randomization"] = {}
+
+        print(f"{self.__class__.__name__} loaded config {config}")
 
         return super().load_config(config)
 
@@ -64,20 +66,26 @@ class GenericTask(BaseTask):
         # args: actions to apply to the env
         # returns: obs, rewards, resets, info
 
+        super().step(actions)
+
         twip_agent = self.base_env.agent
 
         self.base_env.step(_render=not self.headless)
         obs = {"obs": twip_agent.get_observations()}
 
-        return obs, torch.zeros(1), torch.zeros(1), {}
+        print(obs)
+
+        return obs, torch.zeros(1024), torch.zeros(1024), {}
 
     def reset(self) -> Dict[str, torch.Tensor]:
         # resets a single environment
         # returns: the observations
 
+        super().reset()
+
         twip_agent = self.base_env.agent
 
         self.base_env.prepare()
-        obs = {"obs", twip_agent.get_observations()}
+        obs = {"obs": twip_agent.get_observations()}
 
         return obs

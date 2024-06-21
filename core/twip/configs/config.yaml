@@ -1,5 +1,5 @@
 params:
-  seed: 1 
+  seed: 0 
 
   algo: 
     name: a2c_continuous
@@ -13,26 +13,23 @@ params:
     space: 
       continuous: 
         mu_activation: None 
-
         sigma_activation: None 
 
         mu_init:
           name: default
         sigma_init:
-          name: const_initiliazer
+          name: const_initializer
           val: 0
-          fixed_sigma: True
-        mlp:
-          units: [32,32]
-          activation: tanh
-          d2rl: False 
+        fixed_sigma: True
+    mlp:
+      units: [32,32]
+      activation: tanh
+      d2rl: False 
           
-          initializer: 
-            name: default
-          regularizer: 
-            name: default
-
-
+      initializer: 
+        name: default
+      regularizer: 
+        name: default
 
   load_checkpoint: False
   load_path: "" 
@@ -40,7 +37,7 @@ params:
   config:
     name: twip
     full_experiment_name: twip 0.0.1
-    env_name: earth
+    env_name: generic
     multi_gpu: False
     ppo: True 
     mixed_precision: True
@@ -49,7 +46,7 @@ params:
     value_bootstrap: True
 
     num_actors: 1024
-    reward_shape: 
+    reward_shaper: 
       scale_value: 0.01
 
     normalize_advantage: True 
