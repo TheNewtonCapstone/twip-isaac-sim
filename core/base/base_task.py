@@ -53,7 +53,6 @@ class BaseTask(IVecEnv):
         # returns: the observations
 
         print(f"{self.__class__.__name__} reset")
-
         return
 
     def seed(self, seed) -> None:

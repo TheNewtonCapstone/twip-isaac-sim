@@ -5,6 +5,8 @@ import torch
 
 from core.base.base_agent import BaseAgent
 
+from typing import Dict
+
 
 class WheelDriveType(Enum):
     LEFT = 0
@@ -74,10 +76,14 @@ class TwipAgent(BaseAgent):
         art = Articulation(prim_path=self.stage_path)
         art.initialize()
 
-    def get_observations(self) -> torch.Tensor:
+    def get_observations(self) -> Dict[str, torch.Tensor]:
         frame = self.imu.get_current_frame()
 
-        return torch.from_numpy(frame["orientation"])
+        lin_acc = torch.from_numpy(frame["lin_acc"])
+        ang_vel = torch.from_numpy(frame["ang_vel"])
+        orientation = torch.from_numpy(frame["orientation"])
+
+        return (lin_acc, ang_vel, orientation)
 
     def set_damping(self, type: WheelDriveType, val) -> None:
         (self.lwd if type == WheelDriveType.LEFT else self.rwd).GetDampingAttr().Set(
