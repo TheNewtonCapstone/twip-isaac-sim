@@ -18,14 +18,14 @@ class GenericTask(BaseTask):
     def load_config(self):
         config = {}
         config["device"] = "cuda:0"
-        config["headless"] = False
+        config["headless"] = True
 
         config["num_envs"] = 1
 
         config["num_agents"] = 1
-        config["num_observations"] = 2
+        config["num_observations"] = 10
         config["num_actions"] = 2
-        config["num_states"] = 1
+        config["num_states"] = 0
 
         config["observation_space"] = gm.spaces.Box(
             np.ones(config["num_observations"]) * -np.Inf,
@@ -71,11 +71,36 @@ class GenericTask(BaseTask):
         twip_agent = self.base_env.agent
 
         self.base_env.step(_render=not self.headless)
-        obs = {"obs": twip_agent.get_observations()}
 
-        print(obs)
+        twip_obs_dict = twip_agent.get_observations()
+        twip_obs = torch.cat(
+            (
+                twip_obs_dict["lin_acc"],
+                twip_obs_dict["ang_vel"],
+                twip_obs_dict["orientation"],
+            ),
+            0,
+        )
+        obs = {
+            "obs": torch.cat((twip_obs.unsqueeze(0), torch.tensor([])), 0).to(
+                device=self.device
+            )
+        }
 
-        return obs, torch.zeros(1024), torch.zeros(1024), {}
+        # reward is the difference between current orientation and stable orientation
+        reward = torch.tensor(
+            np.linalg.norm(twip_obs["orientation"] - np.array([1, 0, 0, 0]))
+        )
+
+        done = False
+
+        # reset if the orientation is too far off
+        if reward > 0.1:
+            done = True
+
+        env_info = self.get_env_info()
+
+        return torch.tensor(obs), reward, done, env_info
 
     def reset(self) -> Dict[str, torch.Tensor]:
         # resets a single environment
@@ -86,6 +111,22 @@ class GenericTask(BaseTask):
         twip_agent = self.base_env.agent
 
         self.base_env.prepare()
-        obs = {"obs": twip_agent.get_observations()}
+
+        twip_obs_dict = twip_agent.get_observations()
+        twip_obs = torch.cat(
+            (
+                twip_obs_dict["lin_acc"],
+                twip_obs_dict["ang_vel"],
+                twip_obs_dict["orientation"],
+            ),
+            0,
+        )
+        obs = {
+            "obs": torch.cat((twip_obs.unsqueeze(0), torch.tensor([])), 0).to(
+                device=self.device
+            )
+        }
+
+        print(obs)
 
         return obs
