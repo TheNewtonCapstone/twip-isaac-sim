@@ -22,7 +22,7 @@ params:
           val: 0
         fixed_sigma: True
     mlp:
-      units: [32,32]
+      units: [32, 32]
       activation: tanh
       d2rl: False 
           
@@ -45,7 +45,7 @@ params:
     normalize_value: True
     value_bootstrap: True
 
-    num_actors: 1024
+    num_actors: 1 
     reward_shaper: 
       scale_value: 0.01
 
@@ -65,7 +65,7 @@ params:
     trucante_grad: False
     e_clip: 0.2
     horizon_length: 16
-    minibatch_size: 2048
+    minibatch_size: 1
     mini_epochs: 4
     critic_coef: 2
     clip_value: True

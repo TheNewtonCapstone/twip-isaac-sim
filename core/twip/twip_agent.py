@@ -83,7 +83,7 @@ class TwipAgent(BaseAgent):
         ang_vel = torch.from_numpy(frame["ang_vel"])
         orientation = torch.from_numpy(frame["orientation"])
 
-        return (lin_acc, ang_vel, orientation)
+        return {"lin_acc": lin_acc, "ang_vel": ang_vel, "orientation": orientation}
 
     def set_damping(self, type: WheelDriveType, val) -> None:
         (self.lwd if type == WheelDriveType.LEFT else self.rwd).GetDampingAttr().Set(
