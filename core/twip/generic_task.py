@@ -18,7 +18,7 @@ class GenericTask(BaseTask):
     def load_config(self):
         config = {}
         config["device"] = "cuda:0"
-        config["headless"] = True
+        config["headless"] = False
 
         config["num_envs"] = 1
 
@@ -89,7 +89,7 @@ class GenericTask(BaseTask):
 
         # reward is the difference between current orientation and stable orientation
         reward = torch.tensor(
-            np.linalg.norm(twip_obs["orientation"] - np.array([1, 0, 0, 0]))
+            np.linalg.norm(twip_obs_dict["orientation"] - np.array([1, 0, 0, 0]))
         )
 
         done = False
@@ -100,7 +100,7 @@ class GenericTask(BaseTask):
 
         env_info = self.get_env_info()
 
-        return torch.tensor(obs), reward, done, env_info
+        return obs, reward, done, env_info
 
     def reset(self) -> Dict[str, torch.Tensor]:
         # resets a single environment

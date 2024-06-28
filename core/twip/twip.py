@@ -23,7 +23,7 @@ def get_current_path() -> str:
 
 
 app_settings = {
-    "headless": True,
+    "headless": False,
 }
 
 world_settings = {
@@ -46,9 +46,9 @@ def train(cfg: DictConfig) -> Dict:
 
     env.add_agent(twip)
 
-    #   task = GenericTask(env)
-    #    task.load_config()
-    # task.construct(sim_app)
+    task = GenericTask(env)
+    task.load_config()
+    task.construct(sim_app)
 
     task_architect = base_task_architect(env, sim_app, GenericTask)
 
@@ -66,14 +66,14 @@ def train(cfg: DictConfig) -> Dict:
     )
     vecenv.register("RLGPU", lambda config_name, num_actors, **kwargs: task_architect())
 
-    runner = Runner()
-    runner.load(task_config)
-    runner.reset()
+    # runner = Runner()
+    # runner.load(task_config)
+    # runner.reset()
 
-    runner.run({"train": True, "play": False})
+    # runner.run({"train": True, "play": False})
 
     while sim_app.is_running():
-        # task.step(torch.zeros(1))
+        task.step(torch.zeros(1))
 
         if env.o_world.current_time % 10 <= 5:
             twip.set_target_velocity(WheelDriveType.LEFT, 0)
