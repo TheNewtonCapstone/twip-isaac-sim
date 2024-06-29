@@ -13,7 +13,7 @@ def base_task_architect(
 ):
     def base_task_creator():
         task = task_class(env)
-        task.load_config()
+        task.load_config(headless=False)
         task.construct(sim_app)
 
         print("Task created")

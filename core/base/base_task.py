@@ -1,4 +1,4 @@
-import gymnasium as gm
+import gymnasium as gym
 import numpy as np
 import torch
 from typing import Dict, Any, Tuple
@@ -27,9 +27,9 @@ class BaseTask(IVecEnv):
         self.num_actions: int = self.config["num_actions"]
         self.num_states: int = self.config["num_states"]
 
-        self.observation_space: gm.spaces.Box = self.config["observation_space"]
-        self.action_space: gm.spaces.Box = self.config["action_space"]
-        self.state_space: gm.spaces.Box = self.config["state_space"]
+        self.observation_space: gym.spaces.Box = self.config["observation_space"]
+        self.action_space: gym.spaces.Box = self.config["action_space"]
+        self.state_space: gym.spaces.Box = self.config["state_space"]
 
         # rest of config inside self.config
 
@@ -45,14 +45,14 @@ class BaseTask(IVecEnv):
         # args: actions to apply to the env
         # returns: obs, rewards, resets, info
 
-        print(f"{self.__class__.__name__} step")
+        # print(f"{self.__class__.__name__} step")
         return
 
     def reset(self) -> Dict[str, torch.Tensor]:
         # resets a single environment
         # returns: the observations
 
-        print(f"{self.__class__.__name__} reset")
+        # print(f"{self.__class__.__name__} reset")
         return
 
     def seed(self, seed) -> None:
@@ -81,13 +81,13 @@ class BaseTask(IVecEnv):
     def set_env_state(self, env_state) -> None:
         pass
 
-    def get_observation_space(self) -> gm.spaces:
+    def get_observation_space(self) -> gym.spaces:
         return self.observation_space
 
-    def get_action_space(self) -> gm.Space:
+    def get_action_space(self) -> gym.Space:
         return self.action_space
 
-    def get_state_space(self) -> gm.spaces.Box:
+    def get_state_space(self) -> gym.spaces.Box:
         return self.state_space
 
     def get_num_envs(self) -> int:

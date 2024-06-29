@@ -53,6 +53,7 @@ class TwipAgent(BaseAgent):
         self.set_damping(WheelDriveType.RIGHT, 15000)
 
         self.set_stiffness(WheelDriveType.LEFT, 0)
+        self.set_stiffness(WheelDriveType.RIGHT, 0)
 
         # needs to be imported within the function because of import dependencies
         from omni.isaac.sensor import IMUSensor
@@ -60,7 +61,7 @@ class TwipAgent(BaseAgent):
         self.imu = IMUSensor(
             prim_path=self.stage_path + "/imu",
             name="imu",
-            frequency=60,
+            frequency=200,
             translation=np.array([0, 0, 0]),
             orientation=np.array([1, 0, 0, 0]),
             linear_acceleration_filter_size=10,
@@ -76,12 +77,12 @@ class TwipAgent(BaseAgent):
         art = Articulation(prim_path=self.stage_path)
         art.initialize()
 
-    def get_observations(self) -> Dict[str, torch.Tensor]:
+    def get_observations(self) -> Dict[str, np.ndarray]:
         frame = self.imu.get_current_frame()
 
-        lin_acc = torch.from_numpy(frame["lin_acc"])
-        ang_vel = torch.from_numpy(frame["ang_vel"])
-        orientation = torch.from_numpy(frame["orientation"])
+        lin_acc = frame["lin_acc"]
+        ang_vel = frame["ang_vel"]
+        orientation = frame["orientation"]
 
         return {"lin_acc": lin_acc, "ang_vel": ang_vel, "orientation": orientation}
 
