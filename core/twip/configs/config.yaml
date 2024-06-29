@@ -22,7 +22,7 @@ params:
           val: 0
         fixed_sigma: True
     mlp:
-      units: [32, 32]
+      units: [64, 64]
       activation: relu
       d2rl: False 
           
@@ -31,8 +31,8 @@ params:
       regularizer: 
         name: default
 
-  load_checkpoint: True
-  load_path: "outputs/2024-06-29/09-05-53/runs/twip_balancing/nn/twip.pth" 
+  load_checkpoint: False
+  load_path: "checkpoints/twip_balancing/nn/twip.pth" 
 
   config:
     name: twip
@@ -65,7 +65,7 @@ params:
     e_clip: 0.2
     num_actors: 1
     horizon_length: 64
-    minibatch_size: 32
+    minibatch_size: 64
     mini_epochs: 12
     critic_coef: 2
     clip_value: True
