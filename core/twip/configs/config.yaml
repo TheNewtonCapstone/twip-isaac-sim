@@ -1,5 +1,5 @@
 params:
-  seed: 0 
+  seed: 12341
 
   algo: 
     name: a2c_continuous
@@ -23,7 +23,7 @@ params:
         fixed_sigma: True
     mlp:
       units: [32, 32]
-      activation: tanh
+      activation: relu
       d2rl: False 
           
       initializer: 
@@ -31,48 +31,52 @@ params:
       regularizer: 
         name: default
 
-  load_checkpoint: False
-  load_path: "" 
+  load_checkpoint: True
+  load_path: "outputs/2024-06-29/09-05-53/runs/twip_balancing/nn/twip.pth" 
 
   config:
     name: twip
-    full_experiment_name: twip 0.0.1
+    full_experiment_name: twip_balancing
     env_name: generic
     multi_gpu: False
     ppo: True 
     mixed_precision: True
-    normalize_input: False
+    normalize_input: True
     normalize_value: True
     value_bootstrap: True
 
-    num_actors: 1 
     reward_shaper: 
-      scale_value: 0.01
+      scale_value: 0.1
 
     normalize_advantage: True 
-    gamma: 0.99 
+    gamma: 0.995
     tau: 0.95
     learning_rate: 3e-4
     lr_schedule: adaptive 
-    schedule_legacy: legacy 
+    bound_loss_type: regularisation
     kl_threshold: 0.008
     score_to_win: 2000
-    max_epochs: 1000
-    save_best_after: 200
+    max_epochs: 1024
+    save_best_after: 50
     save_frequency: 50
     grad_norm: 1.0 
     entropy_coef: 0
-    trucante_grad: False
+    trucante_grad: True
     e_clip: 0.2
-    horizon_length: 16
-    minibatch_size: 1
-    mini_epochs: 4
+    num_actors: 1
+    horizon_length: 64
+    minibatch_size: 32
+    mini_epochs: 12
     critic_coef: 2
     clip_value: True
-    seq_len: 4
+    seq_length: 4
     bounds_loss_coef: 0.0001
+
     player:
-    games_num: 2000
+      games_num: 2000
+
+    env_config:
+      skip: 8
 
 
 
