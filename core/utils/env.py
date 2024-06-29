@@ -9,11 +9,12 @@ def base_task_architect(
     env: BaseEnv,
     sim_app: SimulationApp,
     task_class: Type,
+    headless: bool,
     post_create_hook: Callable = None,
 ):
     def base_task_creator():
         task = task_class(env)
-        task.load_config(headless=False)
+        task.load_config(headless=headless)
         task.construct(sim_app)
 
         print("Task created")

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-import gymnasium as gm
+import gymnasium as gym
 import numpy as np
 import torch
 from typing import Dict, Any, Tuple
@@ -29,22 +29,22 @@ class GenericTask(BaseTask):
         config["num_actions"] = 2
         config["num_states"] = 0
 
-        config["observation_space"] = gm.spaces.Box(
+        config["observation_space"] = gym.spaces.Box(
             low=np.array(
                 [
                     -np.pi,
                     -np.Inf,
-                    -600.0,
-                    -600.0,
+                    -400.0,
+                    -400.0,
                 ]
             ),
-            high=np.array([np.pi, np.Inf, 600.0, 600.0]),
+            high=np.array([np.pi, np.Inf, 400.0, 400.0]),
         )
-        config["action_space"] = gm.spaces.Box(
-            np.ones(config["num_actions"]) * -600.0,
-            np.ones(config["num_actions"]) * 600.0,
+        config["action_space"] = gym.spaces.Box(
+            np.ones(config["num_actions"]) * -400.0,
+            np.ones(config["num_actions"]) * 400.0,
         )
-        config["state_space"] = gm.spaces.Box(
+        config["state_space"] = gym.spaces.Box(
             np.ones(config["num_states"]) * -np.Inf,
             np.ones(config["num_states"]) * np.Inf,
         )
@@ -85,11 +85,11 @@ class GenericTask(BaseTask):
         self.base_env.step(_render=not self.headless)
 
         twip_obs_dict = twip_agent.get_observations()
-        twip_pitch = self._quaternion_to_euler(twip_obs_dict["orientation"])[0]
+        twip_roll = self._quaternion_to_euler(twip_obs_dict["orientation"])[0]
 
         twip_obs = torch.tensor(
             [
-                twip_pitch,
+                twip_roll,
                 twip_obs_dict["ang_vel"][0],
                 actions[0, 0].item(),
                 actions[0, 1].item(),
@@ -101,21 +101,19 @@ class GenericTask(BaseTask):
             )
         }
 
-        combined_applied_vel = np.abs(actions[0, 0].item()) + np.abs(
-            actions[0, 1].item()
-        )
+        combined_applied_vel = torch.sum(torch.abs(actions[0, :]))
 
         # the smaller the difference between current orientation and stable orientation, the higher the reward
         reward = torch.tensor(
             [
                 1.0
-                - np.tanh(8 * np.abs(twip_pitch))
-                - 0.05 * np.tanh(np.abs(twip_obs_dict["ang_vel"][2]))
-                - 0.05 * np.tanh(combined_applied_vel)
+                - torch.tanh(8 * torch.abs(twip_roll))
+                - 0.6 * torch.tanh(2 * torch.abs(twip_obs_dict["ang_vel"][2]))
+                - 0.1 * torch.tanh(combined_applied_vel)
             ]
         )
 
-        if np.abs(twip_pitch) > 0.2:
+        if torch.abs(twip_roll) > 0.2:
             done = torch.tensor([True])
             reward = torch.tensor([-4.0])
             self.reset()
@@ -157,15 +155,17 @@ class GenericTask(BaseTask):
 
         return obs
 
-    def _quaternion_to_euler(self, q: np.ndarray) -> np.ndarray:
+    def _quaternion_to_euler(self, q: torch.Tensor) -> torch.Tensor:
         # converts a quaternion to euler angles
         # args: quaternion
         # returns: euler angles
 
         w, x, y, z = q[0], q[1], q[2], q[3]
 
-        roll = np.arctan2(2 * (w * x + y * z), 1 - 2 * (x**2 + y**2))
-        pitch = np.arcsin(2 * (w * y - z * x))
-        yaw = np.arctan2(2 * (w * z + x * y), 1 - 2 * (y**2 + z**2))
+        roll = torch.arctan2(2 * (w * x + y * z), 1 - 2 * (x**2 + y**2))
+        pitch = torch.arcsin(2 * (w * y - z * x))
+        yaw = torch.arctan2(2 * (w * z + x * y), 1 - 2 * (y**2 + z**2))
 
-        return np.array([roll, pitch, yaw])
+        return torch.tensor(
+            [roll, pitch, yaw], device=q.get_device(), dtype=torch.float32
+        )

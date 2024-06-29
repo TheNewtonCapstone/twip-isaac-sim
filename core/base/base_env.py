@@ -16,11 +16,17 @@ from core.base.base_agent import BaseAgent
 
 
 class BaseEnv(ABC):
-    def __init__(self, _o_world_settings) -> None:
+    def __init__(self, world_settings) -> None:
         from omni.isaac.core import World
 
-        self.o_world_settings = _o_world_settings
-        self.o_world = World()
+        self.world = World(
+            physics_dt=world_settings["physics_dt"],
+            rendering_dt=world_settings["rendering_dt"],
+            stage_units_in_meters=world_settings["stage_units_in_meters"],
+            backend=world_settings["backend"],
+            device=world_settings["device"],
+        )
+        self.world_settings = world_settings
 
     @abstractmethod
     def construct(self, sim_app: SimulationApp) -> bool:
@@ -43,7 +49,7 @@ class BaseEnv(ABC):
         physxSceneAPI = PhysxSchema.PhysxSceneAPI.Get(stage, "/physicsScene")
         physxSceneAPI.CreateEnableCCDAttr(True)
         physxSceneAPI.CreateEnableStabilizationAttr(True)
-        physxSceneAPI.CreateEnableGPUDynamicsAttr(True)
+        physxSceneAPI.CreateEnableGPUDynamicsAttr(False)
         physxSceneAPI.CreateBroadphaseTypeAttr("MBP")
         physxSceneAPI.CreateSolverTypeAttr("TGS")
 
@@ -67,13 +73,13 @@ class BaseEnv(ABC):
     def step(
         self, _render
     ) -> Tuple[Dict[str, torch.Tensor], torch.Tensor, torch.Tensor, Dict[str, Any]]:
-        return self.o_world.step(render=_render)
+        return self.world.step(render=_render)
 
     @abstractmethod
     def reset(
         self,
     ) -> Dict[str, torch.Tensor]:
-        self.o_world.reset()
+        self.world.reset()
 
     @abstractmethod
     def add_agent(self, _agent: BaseAgent) -> bool:
