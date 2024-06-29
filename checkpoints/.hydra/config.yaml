@@ -1,83 +1,68 @@
 params:
   seed: 12341
-
-  algo: 
+  algo:
     name: a2c_continuous
-
   model:
     name: continuous_a2c_logstd
-
   network:
     name: actor_critic
-    separate: False
-    space: 
-      continuous: 
-        mu_activation: None 
-        sigma_activation: None 
-
+    separate: false
+    space:
+      continuous:
+        mu_activation: None
+        sigma_activation: None
         mu_init:
           name: default
         sigma_init:
           name: const_initializer
           val: 0
-        fixed_sigma: True
+        fixed_sigma: true
     mlp:
-      units: [96, 96]
+      units:
+      - 96
+      - 96
       activation: relu
-      d2rl: False 
-          
-      initializer: 
+      d2rl: false
+      initializer:
         name: default
-      regularizer: 
+      regularizer:
         name: default
-
   config:
     name: twip
     full_experiment_name: twip_balancing
     env_name: generic
-    multi_gpu: False
-    ppo: True 
-    mixed_precision: True
-    normalize_input: True
-    normalize_value: True
-    value_bootstrap: True
-
-    reward_shaper: 
+    multi_gpu: false
+    ppo: true
+    mixed_precision: true
+    normalize_input: true
+    normalize_value: true
+    value_bootstrap: true
+    reward_shaper:
       scale_value: 0.1
-
-    normalize_advantage: True 
+    normalize_advantage: true
     gamma: 0.99
     tau: 0.95
-    learning_rate: 3e-4
-    lr_schedule: adaptive 
+    learning_rate: 0.0003
+    lr_schedule: adaptive
     bound_loss_type: regularisation
     kl_threshold: 0.008
     score_to_win: 512
     max_epochs: 1024
     save_best_after: 64
     save_frequency: 32
-    grad_norm: 1.0 
+    grad_norm: 1.0
     entropy_coef: 0
-    trucante_grad: True
+    trucante_grad: true
     e_clip: 0.2
     num_actors: 1
     horizon_length: 128
     minibatch_size: 128
     mini_epochs: 12
     critic_coef: 2
-    clip_value: True
+    clip_value: true
     seq_length: 4
     bounds_loss_coef: 0.0001
-
     player:
       games_num: 2000
-
     env_config:
       skip: 8
-
-
-
-
-
-
-

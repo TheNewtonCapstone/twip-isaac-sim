@@ -77,7 +77,7 @@ class TwipAgent(BaseAgent):
         art = Articulation(prim_path=self.stage_path)
         art.initialize()
 
-    def get_observations(self) -> Dict[str, np.ndarray]:
+    def get_observations(self) -> Dict[str, torch.Tensor]:
         frame = self.imu.get_current_frame()
 
         lin_acc = frame["lin_acc"]
