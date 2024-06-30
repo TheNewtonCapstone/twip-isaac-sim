@@ -16,7 +16,7 @@ from core.base.base_agent import BaseAgent
 
 
 class BaseEnv(ABC):
-    def __init__(self, world_settings) -> None:
+    def __init__(self, world_settings, idx) -> None:
         from omni.isaac.core import World
 
         self.world = World(
@@ -28,6 +28,8 @@ class BaseEnv(ABC):
         )
         self.world_settings = world_settings
 
+        self.idx = idx
+
     @abstractmethod
     def construct(self, sim_app: SimulationApp) -> bool:
         from pxr import Gf, PhysxSchema, Sdf, UsdLux, UsdPhysics, PhysicsSchemaTools
@@ -38,21 +40,6 @@ class BaseEnv(ABC):
         # Get stage handle
         stage = omni.usd.get_context().get_stage()
 
-        # Enable physics
-        phys_scene = UsdPhysics.Scene.Define(stage, Sdf.Path("/physicsScene"))
-
-        # Set gravity
-        phys_scene.CreateGravityDirectionAttr().Set(Gf.Vec3f(0.0, 0.0, -1.0))
-        phys_scene.CreateGravityMagnitudeAttr().Set(9.81)
-
-        PhysxSchema.PhysxSceneAPI.Apply(stage.GetPrimAtPath("/physicsScene"))
-        physxSceneAPI = PhysxSchema.PhysxSceneAPI.Get(stage, "/physicsScene")
-        physxSceneAPI.CreateEnableCCDAttr(True)
-        physxSceneAPI.CreateEnableStabilizationAttr(True)
-        physxSceneAPI.CreateEnableGPUDynamicsAttr(False)
-        physxSceneAPI.CreateBroadphaseTypeAttr("MBP")
-        physxSceneAPI.CreateSolverTypeAttr("TGS")
-
         # Add sun
         sun = UsdLux.DistantLight.Define(stage, Sdf.Path("/distantLight"))
         sun.CreateIntensityAttr(500)
@@ -60,10 +47,10 @@ class BaseEnv(ABC):
         # Add ground
         PhysicsSchemaTools.addGroundPlane(
             stage,
-            "/world/groundPlane",
+            "/world{}/groundPlane".format(self.idx),
             "Z",
             100,
-            Gf.Vec3f(0.0),
+            Gf.Vec3f(2.1 * self.idx, 0.0, 0.0),
             Gf.Vec3f(0.84, 0.40, 0.35),
         )
 

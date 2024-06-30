@@ -18,8 +18,8 @@ class WheelDriveType(Enum):
 
 
 class TwipAgent(BaseAgent):
-    def __init__(self, _config) -> None:
-        super().__init__(_config)
+    def __init__(self, config, idx) -> None:
+        super().__init__(config, idx)
 
     def construct(self, stage) -> bool:
         super().construct(stage)
@@ -74,7 +74,10 @@ class TwipAgent(BaseAgent):
 
         from omni.isaac.core.articulations import Articulation
 
-        art = Articulation(prim_path=self.stage_path)
+        art = Articulation(
+            prim_path=self.stage_path,
+            position=np.array([2.1 * self.idx, 0, 0]),
+        )
         art.initialize()
 
     def get_observations(self) -> Dict[str, torch.Tensor]:

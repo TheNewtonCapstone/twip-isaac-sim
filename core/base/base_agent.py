@@ -3,9 +3,9 @@ import torch
 
 
 class BaseAgent(ABC):
-    def __init__(self, _config) -> None:
-        self.config = _config
-        pass
+    def __init__(self, config, idx) -> None:
+        self.config = config
+        self.idx = idx
 
     @abstractmethod
     def construct(self, stage) -> bool:
