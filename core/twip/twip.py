@@ -8,6 +8,7 @@ from rl_games.common.algo_observer import IsaacAlgoObserver
 from rl_games.common import env_configurations, vecenv
 
 from core.envs.generic_env import GenericEnv
+from core.base.base_agent import BaseAgent
 from core.twip.twip_agent import TwipAgent, WheelDriveType
 from core.twip.generic_task import GenericTask
 from core.utils.config import omegaconf_to_dict
@@ -54,15 +55,17 @@ twip_settings = {
 def train(cfg: DictConfig) -> Dict:
     sim_app = SimulationApp(app_settings)
 
-    env = GenericEnv(world_settings)
-    twip = TwipAgent(twip_settings)
+    def generic_env_factory(idx: int) -> GenericEnv:
+        return GenericEnv(world_settings, idx)
 
-    env.add_agent(twip)
-
-    twip.set_target_velocity(WheelDriveType.LEFT, 0)
-    twip.set_target_velocity(WheelDriveType.RIGHT, 0)
+    def twip_agent_factory(idx: int) -> TwipAgent:
+        return TwipAgent(twip_settings, idx)
 
     if app_settings["sim_only"]:
+        env = GenericEnv(world_settings)
+        twip = TwipAgent(twip_settings)
+
+        env.add_agent(twip)
         env.construct(sim_app)
         env.prepare()
 
@@ -77,7 +80,8 @@ def train(cfg: DictConfig) -> Dict:
         return
 
     task_architect = base_task_architect(
-        env,
+        generic_env_factory,
+        twip_agent_factory,
         sim_app,
         GenericTask,
         app_settings["headless"],

@@ -6,14 +6,15 @@ from typing import Callable, Type
 
 
 def base_task_architect(
-    env: BaseEnv,
+    env_factory: Callable,
+    agent_factory: Callable,
     sim_app: SimulationApp,
     task_class: Type,
     headless: bool,
     post_create_hook: Callable = None,
 ):
     def base_task_creator():
-        task = task_class(env)
+        task = task_class(env_factory, agent_factory)
         task.load_config(headless=headless)
         task.construct(sim_app)
 

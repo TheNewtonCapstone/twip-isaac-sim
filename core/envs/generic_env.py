@@ -10,8 +10,8 @@ from core.base.base_env import BaseEnv
 
 
 class GenericEnv(BaseEnv):
-    def __init__(self, _o_world_settings):
-        super().__init__(_o_world_settings)
+    def __init__(self, world_settings, idx):
+        super().__init__(world_settings, idx)
 
     def construct(self, sim_app: SimulationApp) -> bool:
         return super().construct(sim_app)

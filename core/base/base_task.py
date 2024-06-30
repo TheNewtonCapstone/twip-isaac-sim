@@ -1,18 +1,25 @@
 import gymnasium as gym
 import numpy as np
 import torch
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Callable, List
 
 from rl_games.common.ivecenv import IVecEnv
 
 from core.base.base_env import BaseEnv
+from core.base.base_agent import BaseAgent
 
 
 class BaseTask(IVecEnv):
-    def __init__(self, _base_env: BaseEnv):
+    def __init__(
+        self,
+        env_factory: Callable[[int], BaseEnv],
+        agent_factory: Callable[[int], BaseAgent],
+    ):
         self.config = {}
 
-        self.base_env = _base_env
+        self.env_factory = env_factory
+        self.agent_factory = agent_factory
+        self.envs: List[BaseEnv] = []
 
     def load_config(self, config: Dict[str, Any]):
         self.config: Dict[str, Any] = config
@@ -34,7 +41,7 @@ class BaseTask(IVecEnv):
         # rest of config inside self.config
 
     def construct(self) -> bool:
-        return self.base_env.construct()
+        pass
 
     # RL-Games methods (required from IVecEnv)
 
@@ -46,7 +53,7 @@ class BaseTask(IVecEnv):
         # returns: obs, rewards, resets, info
 
         # print(f"{self.__class__.__name__} step")
-        return
+        pass
 
     def reset(self) -> Dict[str, torch.Tensor]:
         # resets a single environment

@@ -2,27 +2,32 @@ from abc import ABC, abstractmethod
 import gymnasium as gym
 import numpy as np
 import torch
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Type, Callable
 
 from isaacsim import SimulationApp
 from rl_games.common.ivecenv import IVecEnv
 
 from core.base.base_task import BaseTask
 from core.base.base_env import BaseEnv
+from core.base.base_agent import BaseAgent
 
 from core.twip.twip_agent import WheelDriveType
 
 
 class GenericTask(BaseTask):
-    def __init__(self, _base_env: BaseEnv):
-        super().__init__(_base_env)
+    def __init__(
+        self,
+        env_factory: Callable[[int], BaseEnv],
+        agent_factory: Callable[[int], BaseAgent],
+    ):
+        super().__init__(env_factory, agent_factory)
 
     def load_config(self, headless=True):
         config = {}
         config["device"] = "cuda:0"
         config["headless"] = headless
 
-        config["num_envs"] = 1
+        config["num_envs"] = 16
 
         config["num_agents"] = 1
         config["num_observations"] = 4
@@ -57,17 +62,22 @@ class GenericTask(BaseTask):
         return super().load_config(config)
 
     def construct(self, sim_app: SimulationApp) -> bool:
-        res = self.base_env.construct(sim_app)
+        for i in range(self.num_envs):
+            env = self.env_factory(i)
+            agent = self.agent_factory(i)
 
-        if not res:
-            return False
+            env.add_agent(agent)
 
-        self.base_env.prepare()
+            if not env.construct(sim_app):
+                return False
+
+            env.prepare()
+
+            self.envs.append(env)
 
         return True
 
     # RL-Games methods (required from IVecEnv)
-
     def step(
         self, actions: torch.Tensor
     ) -> Tuple[Dict[str, torch.Tensor], torch.Tensor, torch.Tensor, Dict[str, Any]]:
@@ -77,52 +87,63 @@ class GenericTask(BaseTask):
 
         super().step(actions)
 
-        twip_agent = self.base_env.agent
+        obs = torch.zeros(self.num_envs, self.num_observations)
+        rewards = torch.zeros(self.num_envs)
+        dones = torch.zeros(self.num_envs)
 
-        twip_agent.set_target_velocity(WheelDriveType.LEFT, actions[0, 0].item())
-        twip_agent.set_target_velocity(WheelDriveType.RIGHT, actions[0, 1].item())
+        for i in range(self.num_envs):
+            twip_agent = self.envs[i].agent
 
-        self.base_env.step(_render=not self.headless)
+            twip_agent.set_target_velocity(WheelDriveType.LEFT, actions[i, 0].item())
+            twip_agent.set_target_velocity(WheelDriveType.RIGHT, actions[i, 1].item())
 
-        twip_obs_dict = twip_agent.get_observations()
-        twip_roll = self._quaternion_to_euler(twip_obs_dict["orientation"])[0]
+            self.envs[i].step(_render=not self.headless)
 
-        twip_obs = torch.tensor(
-            [
-                twip_roll,
-                twip_obs_dict["ang_vel"][0],
-                actions[0, 0].item(),
-                actions[0, 1].item(),
-            ],
-        )
-        obs = {
-            "obs": torch.tensor(
-                twip_obs.unsqueeze(0), device=self.device, dtype=torch.float32
+            twip_obs_dict = twip_agent.get_observations()
+            twip_roll = self._quaternion_to_euler(twip_obs_dict["orientation"])[0]
+
+            obs[i, :] = torch.tensor(
+                [
+                    twip_roll,
+                    twip_obs_dict["ang_vel"][0],
+                    actions[0, 0].item(),
+                    actions[0, 1].item(),
+                ]
             )
-        }
 
-        combined_applied_vel = torch.sum(torch.abs(actions[0, :]))
+            combined_applied_vel = torch.sum(torch.abs(actions[i, :]))
 
-        # the smaller the difference between current orientation and stable orientation, the higher the reward
-        reward = torch.tensor(
-            [
+            # the smaller the difference between current orientation and stable orientation, the higher the reward
+            rewards[i] = (
                 1.0
                 - torch.tanh(8 * torch.abs(twip_roll))
                 - 0.6 * torch.tanh(2 * torch.abs(twip_obs_dict["ang_vel"][2]))
                 - 0.1 * torch.tanh(combined_applied_vel)
-            ]
-        )
+            )
 
-        if torch.abs(twip_roll) > 0.2:
-            done = torch.tensor([True])
-            reward = torch.tensor([-4.0])
-            self.reset()
-        else:
-            done = torch.tensor([False])
+            if torch.abs(twip_roll) > 0.2:
+                dones[i] = True
+                rewards[i] = -4.0
+                self.reset_env(i)
+            else:
+                dones[i] = False
 
         env_info = self.get_env_info()
 
-        return obs, reward, done, env_info
+        return (
+            {"obs": obs.to(device=self.device)},
+            rewards.to(device=self.device),
+            dones.to(device=self.device),
+            env_info,
+        )
+
+    def reset_env(self, idx: int) -> None:
+        env = self.envs[idx]
+        env.prepare()
+
+        # makes sure that the env is stable before starting
+        for _ in range(4):
+            env.step(_render=not self.headless)
 
     def reset(self) -> Dict[str, torch.Tensor]:
         # resets a single environment
@@ -130,30 +151,24 @@ class GenericTask(BaseTask):
 
         super().reset()
 
-        twip_agent = self.base_env.agent
+        obs = torch.zeros(self.num_envs, self.num_observations, dtype=torch.float32)
 
-        self.base_env.prepare()
+        for i in range(self.num_envs):
+            self.reset_env(i)
 
-        # makes sure that the twip is stable before starting
-        for _ in range(4):
-            self.base_env.step(_render=not self.headless)
+            twip_obs_dict = self.envs[i].agent.get_observations()
+            twip_roll = self._quaternion_to_euler(twip_obs_dict["orientation"])[0]
 
-        twip_obs_dict = twip_agent.get_observations()
-        twip_obs = torch.tensor(
-            [
-                self._quaternion_to_euler(twip_obs_dict["orientation"])[0],
-                twip_obs_dict["ang_vel"][0],
-                0.0,
-                0.0,
-            ],
-        )
-        obs = {
-            "obs": torch.tensor(
-                twip_obs.unsqueeze(0), device=self.device, dtype=torch.float32
+            obs[i, :] = torch.tensor(
+                [
+                    twip_roll,
+                    twip_obs_dict["ang_vel"][0],
+                    0,
+                    0,
+                ]
             )
-        }
 
-        return obs
+        return {"obs": obs.to(device=self.device)}
 
     def _quaternion_to_euler(self, q: torch.Tensor) -> torch.Tensor:
         # converts a quaternion to euler angles
