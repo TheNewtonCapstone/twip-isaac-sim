@@ -60,7 +60,7 @@ params:
     entropy_coef: 0
     trucante_grad: True
     e_clip: 0.2
-    num_actors: 16
+    num_actors: 64
     horizon_length: 128
     minibatch_size: 128
     mini_epochs: 12

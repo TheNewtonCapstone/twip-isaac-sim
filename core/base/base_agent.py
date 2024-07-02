@@ -9,7 +9,3 @@ class BaseAgent(ABC):
     @abstractmethod
     def construct(self, root_path: str) -> str:
         pass
-    
-    @abstractmethod
-    def get_observations(self) -> torch.Tensor:
-        pass

@@ -56,23 +56,28 @@ twip_settings = {
 def train(cfg: DictConfig) -> Dict:
     sim_app = SimulationApp(app_settings)
 
-    def generic_env_factory() -> GenericEnv:
-        return GenericEnv(sim_app=sim_app, world_settings=world_settings, num_envs=4)
-
-    def twip_agent_factory() -> TwipAgent:
-        return TwipAgent(twip_settings)
-
     if app_settings["sim_only"]:
-        env = GenericEnv(sim_app=sim_app, world_settings=world_settings, num_envs=4)
+        env = GenericEnv(sim_app=sim_app, world_settings=world_settings, num_envs=64)
         twip = TwipAgent(twip_settings)
 
-        env.big_bang()
         env.construct(twip)
 
         while sim_app.is_running():
             env.step(not app_settings["headless"])
 
         return
+
+    runner_config = OmegaConf.to_container(cfg, resolve=True)
+
+    def generic_env_factory() -> GenericEnv:
+        return GenericEnv(
+            sim_app=sim_app,
+            world_settings=world_settings,
+            num_envs=runner_config["params"]["config"]["num_actors"],
+        )
+
+    def twip_agent_factory() -> TwipAgent:
+        return TwipAgent(twip_settings)
 
     task_architect = base_task_architect(
         generic_env_factory,
@@ -81,8 +86,6 @@ def train(cfg: DictConfig) -> Dict:
         GenericTask,
         app_settings["headless"],
     )
-
-    runner_config = OmegaConf.to_container(cfg, resolve=True)
 
     # registers task creation function with RL Games
     env_configurations.register(

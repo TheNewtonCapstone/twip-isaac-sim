@@ -17,6 +17,7 @@ class WheelDriveType(Enum):
 # probably a good idea to make separate wrapper classes for each joint (or rather, for each object that will publish/subscribe to ROS messages)
 
 
+# this class describes how the agent will be constructed, nothing more
 class TwipAgent(BaseAgent):
     def __init__(self, config) -> None:
         super().__init__(config)
@@ -28,8 +29,10 @@ class TwipAgent(BaseAgent):
 
         # these only work after SimulationApp is initialized (to be done in scripts that import this class)
         import omni.isaac.core.utils.stage as stage_utils
-        
-        stage_utils.add_reference_to_stage(self.config["twip_usd_path"], prim_path=twip_prim_path)  # /envs/0/twip
+
+        stage_utils.add_reference_to_stage(
+            self.config["twip_usd_path"], prim_path=twip_prim_path
+        )  # /envs/0/twip
 
         # needs to be imported within the function because of import dependencies
         from omni.isaac.sensor import IMUSensor
@@ -44,27 +47,3 @@ class TwipAgent(BaseAgent):
             angular_velocity_filter_size=10,
             orientation_filter_size=10,
         )
-
-    def get_observations(self) -> Dict[str, torch.Tensor]:
-        frame = self.imu.get_current_frame()
-
-        lin_acc = frame["lin_acc"]
-        ang_vel = frame["ang_vel"]
-        orientation = frame["orientation"]
-
-        return {"lin_acc": lin_acc, "ang_vel": ang_vel, "orientation": orientation}
-
-    def set_damping(self, type: WheelDriveType, val) -> None:
-        (self.lwd if type == WheelDriveType.LEFT else self.rwd).GetDampingAttr().Set(
-            val
-        )
-
-    def set_stiffness(self, type: WheelDriveType, val) -> None:
-        (self.lwd if type == WheelDriveType.LEFT else self.rwd).GetStiffnessAttr().Set(
-            val
-        )
-
-    def set_target_velocity(self, type: WheelDriveType, val) -> None:
-        (
-            self.lwd if type == WheelDriveType.LEFT else self.rwd
-        ).GetTargetVelocityAttr().Set(val)
