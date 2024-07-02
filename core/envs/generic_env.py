@@ -10,11 +10,11 @@ from core.base.base_env import BaseEnv
 
 
 class GenericEnv(BaseEnv):
-    def __init__(self, world_settings, idx):
-        super().__init__(world_settings, idx)
+    def __init__(self, sim_app: SimulationApp, world_settings, num_envs):
+        super().__init__(sim_app, world_settings, num_envs=num_envs)
 
-    def construct(self, sim_app: SimulationApp) -> bool:
-        return super().construct(sim_app)
+    def construct(self, agent: BaseAgent) -> bool:
+        return super().construct(agent)
 
     def step(
         self, _render
@@ -28,6 +28,3 @@ class GenericEnv(BaseEnv):
 
     def add_agent(self, _agent: BaseAgent) -> bool:
         return super().add_agent(_agent)
-
-    def prepare(self) -> None:
-        return super().prepare()

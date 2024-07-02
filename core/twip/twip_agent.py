@@ -18,48 +18,24 @@ class WheelDriveType(Enum):
 
 
 class TwipAgent(BaseAgent):
-    def __init__(self, config, idx) -> None:
-        super().__init__(config, idx)
+    def __init__(self, config) -> None:
+        super().__init__(config)
 
-    def construct(self, stage) -> bool:
-        super().construct(stage)
+    def construct(self, root_path: str) -> bool:
+        super().construct(root_path)
+
+        twip_prim_path = root_path + "/twip"
 
         # these only work after SimulationApp is initialized (to be done in scripts that import this class)
-        from pxr import Gf, PhysxSchema, Sdf, UsdLux, UsdPhysics
-        import omni.kit.commands
-
-        status, import_config = omni.kit.commands.execute("URDFCreateImportConfig")
-        import_config.merge_fixed_joints = False
-        import_config.convex_decomp = False
-        import_config.import_inertia_tensor = False
-        import_config.fix_base = False
-
-        status, stage_path = omni.kit.commands.execute(
-            "URDFParseAndImportFile",
-            urdf_path=self.config["twip_urdf_path"],
-            import_config=import_config,
-            get_articulation_root=True,
-        )
-        self.stage_path = stage_path
-
-        self.lwd = UsdPhysics.DriveAPI.Get(
-            stage.GetPrimAtPath(self.stage_path + "/lwheel"), "angular"
-        )
-        self.rwd = UsdPhysics.DriveAPI.Get(
-            stage.GetPrimAtPath(self.stage_path + "/rwheel"), "angular"
-        )
-
-        self.set_damping(WheelDriveType.LEFT, 15000)
-        self.set_damping(WheelDriveType.RIGHT, 15000)
-
-        self.set_stiffness(WheelDriveType.LEFT, 0)
-        self.set_stiffness(WheelDriveType.RIGHT, 0)
+        import omni.isaac.core.utils.stage as stage_utils
+        
+        stage_utils.add_reference_to_stage(self.config["twip_usd_path"], prim_path=twip_prim_path)  # /envs/0/twip
 
         # needs to be imported within the function because of import dependencies
         from omni.isaac.sensor import IMUSensor
 
         self.imu = IMUSensor(
-            prim_path=self.stage_path + "/imu",
+            prim_path=twip_prim_path + "/body/imu",
             name="imu",
             frequency=200,
             translation=np.array([0, 0, 0]),
@@ -68,17 +44,6 @@ class TwipAgent(BaseAgent):
             angular_velocity_filter_size=10,
             orientation_filter_size=10,
         )
-
-    def prepare(self, _sim_app) -> None:
-        super().prepare(_sim_app)
-
-        from omni.isaac.core.articulations import Articulation
-
-        art = Articulation(
-            prim_path=self.stage_path,
-            position=np.array([2.1 * self.idx, 0, 0]),
-        )
-        art.initialize()
 
     def get_observations(self) -> Dict[str, torch.Tensor]:
         frame = self.imu.get_current_frame()
