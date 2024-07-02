@@ -35,7 +35,7 @@ rl_settings = {
 
 app_settings = {
     "headless": False,
-    "sim_only": False,
+    "sim_only": True,
 }
 
 world_settings = {
@@ -43,11 +43,12 @@ world_settings = {
     "stage_units_in_meters": 1.0,
     "rendering_dt": 1.0 / 60.0,
     "backend": "torch",
-    "device": "cuda:0",
+    "device": "cuda",
 }
 
 twip_settings = {
     "twip_urdf_path": os.path.join(get_current_path(), "assets/twip.urdf"),
+    "twip_usd_path": os.path.join(get_current_path(), "assets/twip.usd"),
 }
 
 
@@ -55,26 +56,20 @@ twip_settings = {
 def train(cfg: DictConfig) -> Dict:
     sim_app = SimulationApp(app_settings)
 
-    def generic_env_factory(idx: int) -> GenericEnv:
-        return GenericEnv(world_settings, idx)
+    def generic_env_factory() -> GenericEnv:
+        return GenericEnv(sim_app=sim_app, world_settings=world_settings, num_envs=4)
 
-    def twip_agent_factory(idx: int) -> TwipAgent:
-        return TwipAgent(twip_settings, idx)
+    def twip_agent_factory() -> TwipAgent:
+        return TwipAgent(twip_settings)
 
     if app_settings["sim_only"]:
-        env = GenericEnv(world_settings)
+        env = GenericEnv(sim_app=sim_app, world_settings=world_settings, num_envs=4)
         twip = TwipAgent(twip_settings)
 
-        env.add_agent(twip)
-        env.construct(sim_app)
-        env.prepare()
+        env.big_bang()
+        env.construct(twip)
 
         while sim_app.is_running():
-            if env.world.current_time % 10 <= 5:
-                twip.set_target_velocity(WheelDriveType.LEFT, 0)
-            else:
-                twip.set_target_velocity(WheelDriveType.LEFT, 1400)
-
             env.step(not app_settings["headless"])
 
         return

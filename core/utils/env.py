@@ -16,7 +16,7 @@ def base_task_architect(
     def base_task_creator():
         task = task_class(env_factory, agent_factory)
         task.load_config(headless=headless)
-        task.construct(sim_app)
+        task.construct()
 
         print("Task created")
 

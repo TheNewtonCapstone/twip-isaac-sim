@@ -61,19 +61,13 @@ class GenericTask(BaseTask):
 
         return super().load_config(config)
 
-    def construct(self, sim_app: SimulationApp) -> bool:
-        for i in range(self.num_envs):
-            env = self.env_factory(i)
-            agent = self.agent_factory(i)
+    def construct(self) -> bool:
+        import omni.isaac.kit
 
-            env.add_agent(agent)
+        env = self.env_factory()
+        agent = self.agent_factory()
 
-            if not env.construct(sim_app):
-                return False
-
-            env.prepare()
-
-            self.envs.append(env)
+        root_path = env.construct(agent)
 
         return True
 
@@ -92,6 +86,7 @@ class GenericTask(BaseTask):
         dones = torch.zeros(self.num_envs)
 
         for i in range(self.num_envs):
+            break
             twip_agent = self.envs[i].agent
 
             twip_agent.set_target_velocity(WheelDriveType.LEFT, actions[i, 0].item())
@@ -139,7 +134,6 @@ class GenericTask(BaseTask):
 
     def reset_env(self, idx: int) -> None:
         env = self.envs[idx]
-        env.prepare()
 
         # makes sure that the env is stable before starting
         for _ in range(4):
@@ -154,7 +148,8 @@ class GenericTask(BaseTask):
         obs = torch.zeros(self.num_envs, self.num_observations, dtype=torch.float32)
 
         for i in range(self.num_envs):
-            self.reset_env(i)
+            break
+            # self.reset_env(i)
 
             twip_obs_dict = self.envs[i].agent.get_observations()
             twip_roll = self._quaternion_to_euler(twip_obs_dict["orientation"])[0]

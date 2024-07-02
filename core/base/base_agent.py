@@ -3,18 +3,13 @@ import torch
 
 
 class BaseAgent(ABC):
-    def __init__(self, config, idx) -> None:
+    def __init__(self, config) -> None:
         self.config = config
-        self.idx = idx
 
     @abstractmethod
-    def construct(self, stage) -> bool:
+    def construct(self, root_path: str) -> str:
         pass
-
-    @abstractmethod
-    def prepare(self, _sim_app) -> None:
-        pass
-
+    
     @abstractmethod
     def get_observations(self) -> torch.Tensor:
         pass
