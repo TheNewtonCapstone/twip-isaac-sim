@@ -10,18 +10,13 @@ def base_task_architect(
     agent_factory: Callable,
     sim_app: SimulationApp,
     task_class: Type,
-    headless: bool,
-    post_create_hook: Callable = None,
 ):
-    def base_task_creator():
+    def base_task_creator(headless: bool, device: str, num_envs: int):
         task = task_class(env_factory, agent_factory)
-        task.load_config(headless=headless)
+        task.load_config(headless, device, num_envs)
         task.construct()
 
-        print("Task created")
-
-        if post_create_hook is not None:
-            post_create_hook()
+        print("Created", task)
 
         return task
 
