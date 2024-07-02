@@ -27,7 +27,7 @@ class GenericTask(BaseTask):
         config["device"] = "cuda:0"
         config["headless"] = headless
 
-        config["num_envs"] = 16
+        config["num_envs"] = 64
 
         config["num_agents"] = 1
         config["num_observations"] = 4
