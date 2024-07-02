@@ -22,12 +22,17 @@ class GenericTask(BaseTask):
     ):
         super().__init__(env_factory, agent_factory)
 
-    def load_config(self, headless=True):
-        config = {}
-        config["device"] = "cuda:0"
+    def load_config(
+        self,
+        headless: bool,
+        device: str,
+        num_envs: int,
+        config: Dict[Any, str] = {},
+    ) -> None:
+        config["device"] = device
         config["headless"] = headless
 
-        config["num_envs"] = 64
+        config["num_envs"] = num_envs
 
         config["num_agents"] = 1
         config["num_observations"] = 4
@@ -59,7 +64,12 @@ class GenericTask(BaseTask):
 
         print(f"{self.__class__.__name__} loaded config {config}")
 
-        return super().load_config(config)
+        super().load_config(
+            headless=headless,
+            device=device,
+            num_envs=num_envs,
+            config=config,
+        )
 
     def construct(self) -> bool:
         import omni.isaac.kit
@@ -67,7 +77,7 @@ class GenericTask(BaseTask):
         env = self.env_factory()
         agent = self.agent_factory()
 
-        root_path = env.construct(agent)
+        env.construct(agent)
 
         return True
 

@@ -30,7 +30,7 @@ class BaseEnv(ABC):
 
     @abstractmethod
     def construct(self, agent: BaseAgent) -> str:
-        self.agent = agent  # save the agent class for informative purposes
+        self.agent = agent  # save the agent class for informative purposes (i.e. introspection/debugging)
 
         import omni.isaac.core
         from omni.isaac.core import World
@@ -74,14 +74,14 @@ class BaseEnv(ABC):
             Gf.Vec3f(0.84, 0.40, 0.35),
         )
 
-        self.agent_stage_path = "/envs/e_0"
-        self.agent.construct(self.agent_stage_path)
+        self.base_agent_path = "/envs/e_0"
+        self.agent.construct(self.base_agent_path)
 
         from omni.isaac.cloner import GridCloner
         from omni.isaac.core.articulations import ArticulationView
         from pxr import UsdGeom
 
-        UsdGeom.Xform.Define(stage, self.agent_stage_path)
+        UsdGeom.Xform.Define(stage, self.base_agent_path)
 
         # clone the agent
         cloner = GridCloner(spacing=3)
@@ -93,22 +93,22 @@ class BaseEnv(ABC):
             global_paths=["/groundPlane"],
         )
         cloner.clone(
-            source_prim_path=self.agent_stage_path,
-            base_env_path=self.agent_stage_path,
+            source_prim_path=self.base_agent_path,
+            base_env_path=self.base_agent_path,
             copy_from_source=True,
             prim_paths=agent_paths,
         )
 
         self.world.reset()
 
-        prims = ArticulationView(
+        self.twip_art_view = ArticulationView(
             prim_paths_expr="/envs/e.*/twip/body",
             name="twip_art_view",
             reset_xform_properties=False,
         )
-        prims.initialize()
+        self.twip_art_view.initialize()
 
-        return self.agent_stage_path
+        return self.base_agent_path
 
     @abstractmethod
     def step(
