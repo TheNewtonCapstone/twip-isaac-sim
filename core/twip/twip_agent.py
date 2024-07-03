@@ -32,7 +32,7 @@ class TwipAgent(BaseAgent):
 
         stage_utils.add_reference_to_stage(
             self.config["twip_usd_path"], prim_path=twip_prim_path
-        )  # /envs/0/twip
+        )  # /envs/e_0/twip
 
         # needs to be imported within the function because of import dependencies
         from omni.isaac.sensor import IMUSensor
