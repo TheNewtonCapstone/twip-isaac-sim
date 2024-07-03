@@ -21,13 +21,18 @@ class BaseTask(IVecEnv):
         self.agent_factory = agent_factory
         self.envs: List[BaseEnv] = []
 
-    def load_config(self, config: Dict[str, Any]):
+    def load_config(
+        self,
+        headless: bool,
+        device: str,
+        num_envs: int,
+        config: Dict[str, Any] = {},
+    ) -> None:
         self.config: Dict[str, Any] = config
 
-        self.device: str = self.config["device"]
-        self.headless: bool = self.config["headless"]
-
-        self.num_envs: int = self.config["num_envs"]
+        self.headless: bool = headless
+        self.device: str = device
+        self.num_envs: int = num_envs
 
         self.num_agents: int = self.config["num_agents"]
         self.num_observations: int = self.config["num_observations"]
@@ -40,6 +45,9 @@ class BaseTask(IVecEnv):
 
         # rest of config inside self.config
 
+    def __str__(self):
+        return f"{self.__class__.__name__} with {self.num_envs} environments, {self.num_agents} agents, {self.num_observations} observations, {self.num_actions} actions, {self.num_states} states."
+
     def construct(self) -> bool:
         pass
 
@@ -51,15 +59,11 @@ class BaseTask(IVecEnv):
         # goes through a RL step (includes all the base RL things such as get obs, apply actions, etc.
         # args: actions to apply to the env
         # returns: obs, rewards, resets, info
-
-        # print(f"{self.__class__.__name__} step")
         pass
 
     def reset(self) -> Dict[str, torch.Tensor]:
         # resets a single environment
         # returns: the observations
-
-        # print(f"{self.__class__.__name__} reset")
         return
 
     def seed(self, seed) -> None:
@@ -69,7 +73,7 @@ class BaseTask(IVecEnv):
         return False
 
     def get_number_of_agents(self) -> int:
-        # we only support 1 agent in the env for now
+        # we only support 1 agent per env for now
         return 1
 
     def get_env_info(self) -> Dict:

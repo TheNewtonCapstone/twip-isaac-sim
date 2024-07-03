@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 import time
 from typing import Dict, Tuple, Any
 import torch
+import numpy as np
 
 from omni.isaac.kit import SimulationApp
 
@@ -29,7 +30,7 @@ class BaseEnv(ABC):
 
     @abstractmethod
     def construct(self, agent: BaseAgent) -> str:
-        self.agent = agent  # save the agent class for informative purposes
+        self.agent = agent  # save the agent class for informative purposes (i.e. introspection/debugging)
 
         import omni.isaac.core
         from omni.isaac.core import World
@@ -50,72 +51,64 @@ class BaseEnv(ABC):
         )
         self.world.initialize_physics()
 
-        # Enable physics
-        scene = UsdPhysics.Scene.Define(stage, Sdf.Path("/physicsScene"))
-        # Set gravity
-        scene.CreateGravityDirectionAttr().Set(Gf.Vec3f(0.0, 0.0, -1.0))
-        scene.CreateGravityMagnitudeAttr().Set(9.81)
-
-        PhysxSchema.PhysxSceneAPI.Apply(stage.GetPrimAtPath("/physicsScene"))
-        physxSceneAPI = PhysxSchema.PhysxSceneAPI.Get(stage, "/physicsScene")
-        physxSceneAPI.CreateEnableCCDAttr(True)
-        physxSceneAPI.CreateEnableStabilizationAttr(True)
-        physxSceneAPI.CreateEnableGPUDynamicsAttr(True)
-        physxSceneAPI.CreateBroadphaseTypeAttr("GPU")
-        physxSceneAPI.CreateSolverTypeAttr("TGS")
-
         # Adjust physics scene settings (mainly for GPU memory allocation)
         phys_context = self.world.get_physics_context()
         phys_context.set_gpu_found_lost_aggregate_pairs_capacity(
-            max(self.num_envs * 196, 1024)
+            max(self.num_envs * 64, 1024)
         )  # 1024 is the default value, eyeballed the other value
         phys_context.set_gpu_total_aggregate_pairs_capacity(
             max(self.num_envs * 64, 1024)
-        )  # 512 is the default value, eyeballed the other value
+        )  # 1024 is the default value, eyeballed the other value
 
         # Add sun
         sun = UsdLux.DistantLight.Define(stage, Sdf.Path("/distantLight"))
         sun.CreateIntensityAttr(500)
 
-        self.agent_stage_path = "/envs/env_0"
-
-        # Get stage handle
-        stage = get_current_stage()
-
+        # Add ground plane
         PhysicsSchemaTools.addGroundPlane(
             stage,
-            self.agent_stage_path + "/world/groundPlane",
+            "/groundPlane",
             "Z",
-            1,
+            np.ceil(np.sqrt(self.num_envs)) * 2,
             Gf.Vec3f(0.0, 0.0, 0.0),
             Gf.Vec3f(0.84, 0.40, 0.35),
         )
 
-        self.agent.construct(self.agent_stage_path)
+        self.base_agent_path = "/envs/e_0"
+        self.agent.construct(self.base_agent_path)
 
         from omni.isaac.cloner import GridCloner
         from omni.isaac.core.articulations import ArticulationView
-        from omni.isaac.core.robots import RobotView
         from pxr import UsdGeom
 
+        UsdGeom.Xform.Define(stage, self.base_agent_path)
+
+        # clone the agent
         cloner = GridCloner(spacing=3)
-        UsdGeom.Xform.Define(stage, self.agent_stage_path)
+        agent_paths = cloner.generate_paths("/envs/e", self.num_envs)
+        cloner.filter_collisions(
+            physicsscene_path="/physicsScene",
+            collision_root_path="/collisionGroups",
+            prim_paths=agent_paths,
+            global_paths=["/groundPlane"],
+        )
         cloner.clone(
-            source_prim_path=self.agent_stage_path,
-            base_env_path=self.agent_stage_path,
+            source_prim_path=self.base_agent_path,
+            base_env_path=self.base_agent_path,
             copy_from_source=True,
-            prim_paths=cloner.generate_paths("/envs/env", self.num_envs),
+            prim_paths=agent_paths,
         )
 
         self.world.reset()
 
-        self.prims = RobotView(
+        prims = ArticulationView(
             prim_paths_expr="/envs/env.*/twip/body",
             name="twip_art_view",
+            reset_xform_properties=False,
         )
-        self.prims.initialize()
+        prims.initialize()
 
-        return self.agent_stage_path
+        return self.base_agent_path
 
     @abstractmethod
     def step(
