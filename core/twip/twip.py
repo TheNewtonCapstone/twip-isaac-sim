@@ -1,6 +1,7 @@
 import os
 import hydra
 import torch
+import numpy as np
 
 from isaacsim import SimulationApp
 from rl_games.torch_runner import Runner
@@ -43,7 +44,7 @@ world_settings = {
     "stage_units_in_meters": 1.0,
     "rendering_dt": 1.0 / 60.0,
     "backend": "torch",
-    "device": "cuda",
+    "device": "cuda:0",
 }
 
 twip_settings = {
@@ -56,13 +57,53 @@ twip_settings = {
 def train(cfg: DictConfig) -> Dict:
     sim_app = SimulationApp(app_settings)
 
+    num_envs = 4
+
     if app_settings["sim_only"]:
-        env = GenericEnv(sim_app=sim_app, world_settings=world_settings, num_envs=64)
+        env = GenericEnv(sim_app=sim_app, world_settings=world_settings, num_envs=num_envs)
         twip = TwipAgent(twip_settings)
 
         env.construct(twip)
+        world = env.world
 
+        twip_view = env.prims
+        num_dof = twip_view.num_dof
+
+        import omni.replicator.isaac as dr
+        import omni.replicator.core as rep
+
+        dr.physics_view.register_simulation_context(world)
+        dr.physics_view.register_articulation_view(twip_view)
+        dr.physics_view.torch.set_default_device("cuda:0")
+
+
+        with dr.trigger.on_rl_frame(num_envs=num_envs):
+            # with dr.gate.on_interval(interval=10):
+            #     dr.physics_view.randomize_simulation_context(
+            #         operation="scaling",
+            #         gravity=rep.distribution.uniform((1, 1, -1.5), (1, 1, 2.0)),
+            #     )
+    
+            with dr.gate.on_interval(interval=100):
+                dr.physics_view.randomize_articulation_view(
+                    view_name=twip_view.name,
+                    operation="direct",
+                    joint_velocities=rep.distribution.uniform(tuple([-200]*num_dof), tuple([200]*num_dof)),
+                )
+            
+        rep.orchestrator.run()
+
+        frame_idx = 0
         while sim_app.is_running():
+            if world.is_playing():
+                reset_inds = list()
+                if frame_idx % 200 == 0:
+                    # triggers reset every 200 steps
+                    reset_inds = np.arange(num_envs)
+                dr.physics_view.step_randomization(reset_inds)
+                world.step(render=True)
+                frame_idx += 1
+
             env.step(not app_settings["headless"])
 
         return
