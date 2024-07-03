@@ -78,9 +78,13 @@ if __name__ == "__main__":
 
     # override config with CLI args & vice versa
     if cli_args.num_envs == -1:
-        cli_args.num_envs = rl_config["params"]["num_actors"]
+        cli_args.num_envs = rl_config["params"]["config"]["num_actors"]
     else:
-        rl_config["params"]["num_actors"] = cli_args.num_envs
+        rl_config["params"]["config"]["num_actors"] = cli_args.num_envs
+
+    print(
+        f"Updated the following parameters: {rl_config['params']['config']['num_actors']}"
+    )
 
     sim_app = SimulationApp({"headless": cli_args.headless})
 
@@ -99,7 +103,7 @@ if __name__ == "__main__":
         env.construct(twip)
 
         while sim_app.is_running():
-            env.step(not cli_args.headless)
+            env.step(actions=None, render=not cli_args.headless)
 
         exit(0)
 
