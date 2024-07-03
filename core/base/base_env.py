@@ -64,60 +64,14 @@ class BaseEnv(ABC):
         sun = UsdLux.DistantLight.Define(stage, Sdf.Path("/distantLight"))
         sun.CreateIntensityAttr(500)
 
-        # Add ground plane
-        PhysicsSchemaTools.addGroundPlane(
-            stage,
-            "/groundPlane",
-            "Z",
-            np.ceil(np.sqrt(self.num_envs)) * 2,
-            Gf.Vec3f(0.0, 0.0, 0.0),
-            Gf.Vec3f(0.84, 0.40, 0.35),
-        )
-
-        self.base_agent_path = "/envs/e_0"
-        self.agent.construct(self.base_agent_path)
-
-        from omni.isaac.cloner import GridCloner
-        from omni.isaac.core.articulations import ArticulationView
-        from pxr import UsdGeom
-
-        UsdGeom.Xform.Define(stage, self.base_agent_path)
-
-        # clone the agent
-        cloner = GridCloner(spacing=3)
-        agent_paths = cloner.generate_paths("/envs/e", self.num_envs)
-        cloner.filter_collisions(
-            physicsscene_path="/physicsScene",
-            collision_root_path="/collisionGroups",
-            prim_paths=agent_paths,
-            global_paths=["/groundPlane"],
-        )
-        cloner.clone(
-            source_prim_path=self.base_agent_path,
-            base_env_path=self.base_agent_path,
-            copy_from_source=True,
-            prim_paths=agent_paths,
-        )
-
-        self.world.reset()
-
-        self.twip_art_view = ArticulationView(
-            prim_paths_expr="/envs/e.*/twip/body",
-            name="twip_art_view",
-            reset_xform_properties=False,
-        )
-        self.twip_art_view.initialize()
-
-        return self.base_agent_path
-
     @abstractmethod
-    def step(
-        self, _render
-    ) -> Tuple[Dict[str, torch.Tensor], torch.Tensor, torch.Tensor, Dict[str, Any]]:
-        return self.world.step(render=_render)
+    def step(self, actions: torch.Tensor, render: bool) -> torch.Tensor:
+        self.world.step(render=render)
+        return None
 
     @abstractmethod
     def reset(
         self,
+        indices: torch.Tensor,
     ) -> Dict[str, torch.Tensor]:
         self.world.reset()

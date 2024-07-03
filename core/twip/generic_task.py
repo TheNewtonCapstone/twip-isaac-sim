@@ -14,6 +14,7 @@ from core.base.base_agent import BaseAgent
 from core.twip.twip_agent import WheelDriveType
 
 
+# should be called BalancingTwipTask
 class GenericTask(BaseTask):
     def __init__(
         self,
@@ -74,10 +75,10 @@ class GenericTask(BaseTask):
     def construct(self) -> bool:
         import omni.isaac.kit
 
-        env = self.env_factory()
-        agent = self.agent_factory()
+        self.env = self.env_factory()
+        self.agent = self.agent_factory()
 
-        env.construct(agent)
+        self.env.construct(self.agent)
 
         return True
 
@@ -91,58 +92,62 @@ class GenericTask(BaseTask):
 
         super().step(actions)
 
-        obs = torch.zeros(self.num_envs, self.num_observations)
-        rewards = torch.zeros(self.num_envs)
-        dones = torch.zeros(self.num_envs)
-
-        for i in range(self.num_envs):
-            break
-            twip_agent = self.envs[i].agent
-
-            twip_agent.set_target_velocity(WheelDriveType.LEFT, actions[i, 0].item())
-            twip_agent.set_target_velocity(WheelDriveType.RIGHT, actions[i, 1].item())
-
-            self.envs[i].step(_render=not self.headless)
-
-            twip_obs_dict = twip_agent.get_observations()
-            twip_roll = self._quaternion_to_euler(twip_obs_dict["orientation"])[0]
-
-            obs[i, :] = torch.tensor(
-                [
-                    twip_roll,
-                    twip_obs_dict["ang_vel"][0],
-                    actions[0, 0].item(),
-                    actions[0, 1].item(),
-                ]
-            )
-
-            combined_applied_vel = torch.sum(torch.abs(actions[i, :]))
-
-            # the smaller the difference between current orientation and stable orientation, the higher the reward
-            rewards[i] = (
-                1.0
-                - torch.tanh(8 * torch.abs(twip_roll))
-                - 0.6 * torch.tanh(2 * torch.abs(twip_obs_dict["ang_vel"][2]))
-                - 0.1 * torch.tanh(combined_applied_vel)
-            )
-
-            if torch.abs(twip_roll) > 0.2:
-                dones[i] = True
-                rewards[i] = -4.0
-                self.reset_env(i)
-            else:
-                dones[i] = False
-
+        obs = torch.zeros(
+            self.num_envs,
+            self.num_observations,
+            device=self.device,
+            dtype=torch.float32,
+        )
+        rewards = torch.zeros(self.num_envs, device=self.device, dtype=torch.float32)
+        dones = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
         env_info = self.get_env_info()
 
+        if actions is None:
+            return (
+                {"obs": obs},
+                rewards,
+                dones,
+                env_info,
+            )
+
+        # shape of twip_imu_obs: (num_envs, 10)
+        # (:, 0:3) -> linear acceleration
+        # (:, 3:6) -> angular velocity
+        # (:, 6:10) -> quaternion (WXYZ)
+        twip_imu_obs = self.env.step(
+            actions,
+            render=not self.headless,
+        ).to(device=self.device)
+
+        # get the roll angle only
+        twip_roll = self._roll_from_quat(twip_imu_obs[:, 6:10])
+        obs[:, 0] = twip_roll
+        obs[:, 1] = twip_imu_obs[:, 3]
+        obs[:, 2] = actions[:, 0]
+        obs[:, 3] = actions[:, 1]
+
+        combined_applied_vel = torch.abs(actions[:, 0]) + torch.abs(actions[:, 1])
+
+        # the smaller the difference between current orientation and stable orientation, the higher the reward
+        rewards = (
+            1.0
+            - torch.tanh(8 * torch.abs(twip_roll))
+            - 0.6 * torch.tanh(2 * torch.abs(twip_imu_obs[:, 2].to(device=self.device)))
+            - 0.1 * torch.tanh(combined_applied_vel)
+        )
+
+        torch.where(torch.abs(twip_roll) > 0.2, -4.0, rewards)
+        torch.where(torch.abs(twip_roll) > 0.2, True, dones)
+
         return (
-            {"obs": obs.to(device=self.device)},
-            rewards.to(device=self.device),
-            dones.to(device=self.device),
+            {"obs": obs},
+            rewards,
+            dones,
             env_info,
         )
 
     def reset_env(self, idx: int) -> None:
+        # TODO: implement this properly
         env = self.envs[idx]
 
         # makes sure that the env is stable before starting
@@ -150,42 +155,31 @@ class GenericTask(BaseTask):
             env.step(_render=not self.headless)
 
     def reset(self) -> Dict[str, torch.Tensor]:
-        # resets a single environment
+        # resets the entire task (i.e. beginning of training/playing)
         # returns: the observations
+
+        # TODO: implement this properly
 
         super().reset()
 
-        obs = torch.zeros(self.num_envs, self.num_observations, dtype=torch.float32)
+        obs = torch.zeros(
+            self.num_envs,
+            self.num_observations,
+            device=self.device,
+            dtype=torch.float32,
+        )
 
-        for i in range(self.num_envs):
-            break
-            # self.reset_env(i)
+        return {"obs": obs}
 
-            twip_obs_dict = self.envs[i].agent.get_observations()
-            twip_roll = self._quaternion_to_euler(twip_obs_dict["orientation"])[0]
-
-            obs[i, :] = torch.tensor(
-                [
-                    twip_roll,
-                    twip_obs_dict["ang_vel"][0],
-                    0,
-                    0,
-                ]
-            )
-
-        return {"obs": obs.to(device=self.device)}
-
-    def _quaternion_to_euler(self, q: torch.Tensor) -> torch.Tensor:
-        # converts a quaternion to euler angles
+    def _roll_from_quat(self, q: torch.Tensor) -> torch.Tensor:
+        # extracts from a quaternion, the roll in rads, expects a 2dim tensor
         # args: quaternion
         # returns: euler angles
 
-        w, x, y, z = q[0], q[1], q[2], q[3]
+        w, x, y, z = q[:, 0], q[:, 1], q[:, 2], q[:, 3]
 
         roll = torch.arctan2(2 * (w * x + y * z), 1 - 2 * (x**2 + y**2))
-        pitch = torch.arcsin(2 * (w * y - z * x))
-        yaw = torch.arctan2(2 * (w * z + x * y), 1 - 2 * (y**2 + z**2))
+        # pitch = torch.arcsin(2 * (w * y - z * x))
+        # yaw = torch.arctan2(2 * (w * z + x * y), 1 - 2 * (y**2 + z**2))
 
-        return torch.tensor(
-            [roll, pitch, yaw], device=q.get_device(), dtype=torch.float32
-        )
+        return roll
