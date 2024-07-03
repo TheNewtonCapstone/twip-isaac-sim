@@ -51,20 +51,6 @@ class BaseEnv(ABC):
         )
         self.world.initialize_physics()
 
-        # Enable physics
-        scene = UsdPhysics.Scene.Define(stage, Sdf.Path("/physicsScene"))
-        # Set gravity
-        scene.CreateGravityDirectionAttr().Set(Gf.Vec3f(0.0, 0.0, -1.0))
-        scene.CreateGravityMagnitudeAttr().Set(9.81)
-
-        PhysxSchema.PhysxSceneAPI.Apply(stage.GetPrimAtPath("/physicsScene"))
-        physxSceneAPI = PhysxSchema.PhysxSceneAPI.Get(stage, "/physicsScene")
-        physxSceneAPI.CreateEnableCCDAttr(True)
-        physxSceneAPI.CreateEnableStabilizationAttr(True)
-        physxSceneAPI.CreateEnableGPUDynamicsAttr(True)
-        physxSceneAPI.CreateBroadphaseTypeAttr("GPU")
-        physxSceneAPI.CreateSolverTypeAttr("TGS")
-
         # Adjust physics scene settings (mainly for GPU memory allocation)
         phys_context = self.world.get_physics_context()
         phys_context.set_gpu_found_lost_aggregate_pairs_capacity(
@@ -93,7 +79,6 @@ class BaseEnv(ABC):
 
         from omni.isaac.cloner import GridCloner
         from omni.isaac.core.articulations import ArticulationView
-        from omni.isaac.core.robots import RobotView
         from pxr import UsdGeom
 
         UsdGeom.Xform.Define(stage, self.base_agent_path)
@@ -116,12 +101,12 @@ class BaseEnv(ABC):
 
         self.world.reset()
 
-        self.prims = RobotView(
+        prims = ArticulationView(
             prim_paths_expr="/envs/env.*/twip/body",
             name="twip_art_view",
+            reset_xform_properties=False,
         )
-
-        self.prims.initialize()
+        prims.initialize()
 
         return self.base_agent_path
 
