@@ -101,8 +101,38 @@ if __name__ == "__main__":
 
         env.construct(twip)
 
+        world = env.world
+        num_envs = env.num_envs
+        twip_view = env.twip_prims
+        num_dof = twip_view.num_dof
+
+        # set up randomization with omni.replicator.isaac, imported as dr
+        import omni.replicator.isaac as dr
+        import omni.replicator.core as rep
+
+        dr.physics_view.register_simulation_context(world)
+        dr.physics_view.register_articulation_view(twip_view)
+
+        with dr.trigger.on_rl_frame(num_envs=num_envs):
+            with dr.gate.on_interval(interval=100):
+                dr.physics_view.randomize_articulation_view(
+                    view_name=twip_view.name,
+                    operation="direct",
+                    joint_velocities=rep.distribution.uniform(tuple([-200]*num_dof), tuple([200]*num_dof)),
+                )
+
+        rep.orchestrator.run()
+
+        frame_idx = 0
         while sim_app.is_running():
-            env.step(True) # Fix this :)
+            if world.is_playing():
+                reset_inds = list()
+                if frame_idx % 200 == 0:
+                    # triggers reset every 200 steps
+                    reset_inds = np.arange(num_envs)
+                dr.physics_view.step_randomization(reset_inds)
+                world.step(render=True)
+                frame_idx += 1
 
     # ----------- #
     # RL TRAINING #

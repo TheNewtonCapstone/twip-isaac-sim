@@ -73,12 +73,14 @@ class BaseEnv(ABC):
             Gf.Vec3f(0.0, 0.0, 0.0),
             Gf.Vec3f(0.84, 0.40, 0.35),
         )
+        
 
         self.base_agent_path = "/envs/e_0"
         self.agent.construct(self.base_agent_path)
 
         from omni.isaac.cloner import GridCloner
         from omni.isaac.core.articulations import ArticulationView
+        from omni.isaac.core.robots import RobotView
         from pxr import UsdGeom
 
         UsdGeom.Xform.Define(stage, self.base_agent_path)
@@ -101,12 +103,11 @@ class BaseEnv(ABC):
 
         self.world.reset()
 
-        prims = ArticulationView(
-            prim_paths_expr="/envs/env.*/twip/body",
+        self.twip_prims = RobotView(
+            prim_paths_expr="/envs/e.*/twip/body",
             name="twip_art_view",
-            reset_xform_properties=False,
         )
-        prims.initialize()
+        self.twip_prims.initialize()
 
         return self.base_agent_path
 
