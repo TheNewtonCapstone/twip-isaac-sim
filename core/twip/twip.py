@@ -1,7 +1,9 @@
 import os
 import yaml
 import torch
+
 import argparse
+import numpy as np
 
 from isaacsim import SimulationApp
 from rl_games.torch_runner import Runner
@@ -94,14 +96,51 @@ if __name__ == "__main__":
             world_settings=world_config,
             num_envs=cli_args.num_envs,
         )
+
         twip = TwipAgent(twip_settings)
 
         env.construct(twip)
+        world = env.world
 
+        twip_view = env.prims
+        num_dof = twip_view.num_dof
+
+        import omni.replicator.isaac as dr
+        import omni.replicator.core as rep
+
+        dr.physics_view.register_simulation_context(world)
+        dr.physics_view.register_articulation_view(twip_view)
+        dr.physics_view.torch.set_default_device("cuda:0")
+
+
+        with dr.trigger.on_rl_frame(num_envs=num_envs):
+            # with dr.gate.on_interval(interval=10):
+            #     dr.physics_view.randomize_simulation_context(
+            #         operation="scaling",
+            #         gravity=rep.distribution.uniform((1, 1, -1.5), (1, 1, 2.0)),
+            #     )
+    
+            with dr.gate.on_interval(interval=100):
+                dr.physics_view.randomize_articulation_view(
+                    view_name=twip_view.name,
+                    operation="direct",
+                    joint_velocities=rep.distribution.uniform(tuple([-200]*num_dof), tuple([200]*num_dof)),
+                )
+            
+        rep.orchestrator.run()
+
+        frame_idx = 0
         while sim_app.is_running():
-            env.step(not cli_args.headless)
+            if world.is_playing():
+                reset_inds = list()
+                if frame_idx % 200 == 0:
+                    # triggers reset every 200 steps
+                    reset_inds = np.arange(num_envs)
+                dr.physics_view.step_randomization(reset_inds)
+                world.step(render=True)
+                frame_idx += 1
 
-        exit(0)
+            env.step(not app_settings["headless"])
 
     # ----------- #
     # RL TRAINING #

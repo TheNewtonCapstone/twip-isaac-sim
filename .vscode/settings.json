@@ -1,5 +1,7 @@
 {
     "python.analysis.extraPaths": [
-        "./_isaac_sim/exts/omni.isaac.core"
+        "./_isaac_sim/exts/omni.isaac.core",
+        "./_isaac_sim/exts/omni.replicator.isaac",
+        "./_isaac_sim/extscache/omni.replicator.core-1.11.8+106.0.0.lx64.r.cp310"
     ]
 }
