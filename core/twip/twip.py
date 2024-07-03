@@ -80,9 +80,13 @@ if __name__ == "__main__":
 
     # override config with CLI args & vice versa
     if cli_args.num_envs == -1:
-        cli_args.num_envs = rl_config["params"]["num_actors"]
+        cli_args.num_envs = rl_config["params"]["config"]["num_actors"]
     else:
-        rl_config["params"]["num_actors"] = cli_args.num_envs
+        rl_config["params"]["config"]["num_actors"] = cli_args.num_envs
+
+    print(
+        f"Updated the following parameters: {rl_config['params']['config']['num_actors']}"
+    )
 
     sim_app = SimulationApp({"headless": cli_args.headless})
 
@@ -105,6 +109,9 @@ if __name__ == "__main__":
         num_envs = env.num_envs
         twip_view = env.twip_prims
         num_dof = twip_view.num_dof
+        
+        while sim_app.is_running():
+            env.step(actions=None, render=not cli_args.headless)
 
         # set up randomization with omni.replicator.isaac, imported as dr
         import omni.replicator.isaac as dr
