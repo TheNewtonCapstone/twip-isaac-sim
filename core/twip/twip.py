@@ -107,11 +107,8 @@ if __name__ == "__main__":
 
         world = env.world
         num_envs = env.num_envs
-        twip_view = env.twip_prims
+        twip_view = env.twip_art_view
         num_dof = twip_view.num_dof
-        
-        while sim_app.is_running():
-            env.step(actions=None, render=not cli_args.headless)
 
         # set up randomization with omni.replicator.isaac, imported as dr
         import omni.replicator.isaac as dr
@@ -136,9 +133,9 @@ if __name__ == "__main__":
                 reset_inds = list()
                 if frame_idx % 200 == 0:
                     # triggers reset every 200 steps
-                    reset_inds = np.arange(num_envs)
+                    reset_inds = np.arange(num_envs)    
                 dr.physics_view.step_randomization(reset_inds)
-                world.step(render=True)
+                world.step(render=not cli_args.headless)
                 frame_idx += 1
 
     # ----------- #

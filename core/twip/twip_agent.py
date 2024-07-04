@@ -22,8 +22,8 @@ class TwipAgent(BaseAgent):
     def __init__(self, config) -> None:
         super().__init__(config)
 
-    def construct(self, root_path: str) -> bool:
-        super().construct(root_path)
+    def construct(self, root_path: str, world) -> bool:
+        super().construct(root_path, world)
 
         twip_prim_path = root_path + "/twip"
 
@@ -35,15 +35,15 @@ class TwipAgent(BaseAgent):
         )  # /envs/e_0/twip
 
         # needs to be imported within the function because of import dependencies
+
+        # TODO: Find out the velocity issue! You got this!
         from omni.isaac.sensor import IMUSensor
 
-        self.imu = IMUSensor(
-            prim_path=twip_prim_path + "/body/imu",
-            name="imu",
-            frequency=200,
-            translation=np.array([0, 0, 0]),
-            orientation=np.array([1, 0, 0, 0]),
-            linear_acceleration_filter_size=10,
-            angular_velocity_filter_size=10,
-            orientation_filter_size=10,
+        self.imu = world.scene.add(
+            IMUSensor(
+                prim_path=twip_prim_path + "/body/imu",
+                name="imu",
+                frequency=60,
+                translation=np.array([0, 0, 0]),
+            )
         )

@@ -73,8 +73,6 @@ class GenericTask(BaseTask):
         )
 
     def construct(self) -> bool:
-        import omni.isaac.kit
-
         self.env = self.env_factory()
         self.agent = self.agent_factory()
 

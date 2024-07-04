@@ -37,8 +37,6 @@ class BaseEnv(ABC):
         from omni.isaac.core.utils.stage import create_new_stage, get_current_stage
         from pxr import Gf, PhysicsSchemaTools, PhysxSchema, Sdf, UsdLux, UsdPhysics
 
-        # Make sure we have a brand new stage (we can also switch this out for a from-USD-loaded stage)
-        create_new_stage()
         stage = get_current_stage()
 
         self.world = World(
@@ -47,9 +45,9 @@ class BaseEnv(ABC):
             stage_units_in_meters=self.world_settings["stage_units_in_meters"],
             backend=self.world_settings["backend"],
             device=self.world_settings["device"],
-            set_defaults=False,
         )
-        self.world.initialize_physics()
+        self.world.scene.add_default_ground_plane()
+        
 
         # Adjust physics scene settings (mainly for GPU memory allocation)
         phys_context = self.world.get_physics_context()

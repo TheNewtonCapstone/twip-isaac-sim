@@ -7,5 +7,5 @@ class BaseAgent(ABC):
         self.config = config
 
     @abstractmethod
-    def construct(self, root_path: str) -> str:
+    def construct(self, root_path: str, world) -> str:
         pass
