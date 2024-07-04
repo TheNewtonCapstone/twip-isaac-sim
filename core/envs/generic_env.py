@@ -10,6 +10,7 @@ from core.base.base_agent import BaseAgent
 from core.base.base_env import BaseEnv
 
 
+
 # TODO: should be called GenericTwipEnv
 class GenericEnv(BaseEnv):
     def __init__(self, sim_app: SimulationApp, world_settings, num_envs):
@@ -22,53 +23,42 @@ class GenericEnv(BaseEnv):
         from omni.isaac.core.utils.stage import get_current_stage
         from pxr import Gf, PhysicsSchemaTools
 
-        stage = get_current_stage()
-
-        # Add ground plane
-        PhysicsSchemaTools.addGroundPlane(
-            stage,
-            "/groundPlane",
-            "Z",
-            np.ceil(np.sqrt(self.num_envs)),
-            Gf.Vec3f(0.0, 0.0, 0.0),
-            Gf.Vec3f(0.84, 0.40, 0.35),
-        )
-
-        self.base_agent_path = "/envs/e_0"
-        self.agent.construct(self.base_agent_path)
 
         from omni.isaac.cloner import GridCloner
         from omni.isaac.core.articulations import ArticulationView
-        from pxr import UsdGeom
-
-        UsdGeom.Xform.Define(stage, self.base_agent_path)
+        from omni.isaac.core.utils.prims import define_prim
 
         # clone the agent
         cloner = GridCloner(spacing=1)
-        self.agent_paths = cloner.generate_paths("/envs/e", self.num_envs)
+        cloner.define_base_env("/World/envs")
+        self.base_agent_path = "/World/envs/e_0"
+        define_prim(self.base_agent_path)
+
+        self.agent.construct(self.base_agent_path, self.world)
+
+        self.agent_paths = cloner.generate_paths("/World/envs/e", self.num_envs)
         self.agent_imu_paths = [f"{path}/twip/body/imu" for path in self.agent_paths]
 
         cloner.filter_collisions(
             physicsscene_path="/physicsScene",
             collision_root_path="/collisionGroups",
             prim_paths=self.agent_paths,
-            global_paths=["/groundPlane"],
+            global_paths=["/World/groundPlane"],
         )
         cloner.clone(
             source_prim_path=self.base_agent_path,
-            base_env_path=self.base_agent_path,
-            copy_from_source=True,
             prim_paths=self.agent_paths,
         )
 
-        self.world.reset()
+        #self.sim_view = omni.physics.tensors.create_simulation_view(self.world_settings["backend"], 0)
 
         self.twip_art_view = ArticulationView(
-            prim_paths_expr="/envs/e.*/twip/body",
+            prim_paths_expr="/World/envs/e.*/twip/body",
             name="twip_art_view",
-            reset_xform_properties=False,
         )
-        self.twip_art_view.initialize()
+        self.world.scene.add(self.twip_art_view)
+
+        self.world.reset()
 
         return self.base_agent_path
 
@@ -78,15 +68,17 @@ class GenericEnv(BaseEnv):
         super().step(actions, render)
 
         # get observations from the cloned agents
-        obs = self._gather_imus_frame()
+        # obs = self._gather_imus_frame()
 
-        return obs
+        return []
 
     def reset(
         self,
         indices: torch.Tensor = None,
     ) -> Dict[str, torch.Tensor]:
-        return super().reset()
+        super().reset()
+        self.twip_art_view.initialize()
+        return
 
     def _apply_actions(self, actions: torch.Tensor) -> None:
         # 0. add the option to choose between position, velocity or torque (effort) control
