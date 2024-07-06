@@ -18,8 +18,8 @@ from core.twip.twip_agent import WheelDriveType
 class GenericTask(BaseTask):
     def __init__(
         self,
-        env_factory: Callable[[int], BaseEnv],
-        agent_factory: Callable[[int], BaseAgent],
+        env_factory: Callable[..., BaseEnv],
+        agent_factory: Callable[..., BaseAgent],
     ):
         super().__init__(env_factory, agent_factory)
 
@@ -115,7 +115,9 @@ class GenericTask(BaseTask):
         twip_imu_obs = self.env.step(
             actions,
             render=not self.headless,
-        ).to(device=self.device)
+        ).to(
+            device=self.device
+        )  # is already be on GPU, so all subsequent calculations will be on GPU
 
         # get the roll angle only
         twip_roll = self._roll_from_quat(twip_imu_obs[:, 6:10])
