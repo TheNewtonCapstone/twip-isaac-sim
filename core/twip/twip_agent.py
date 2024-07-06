@@ -39,11 +39,11 @@ class TwipAgent(BaseAgent):
         # TODO: Find out the velocity issue! You got this!
         from omni.isaac.sensor import IMUSensor
 
-        self.imu = world.scene.add(
+        world.reset()
+
+        self.imu: IMUSensor = world.scene.add(
             IMUSensor(
                 prim_path=twip_prim_path + "/body/imu",
                 name="imu",
-                frequency=60,
-                translation=np.array([0, 0, 0]),
             )
         )

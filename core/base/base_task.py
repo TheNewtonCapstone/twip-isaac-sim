@@ -12,13 +12,15 @@ from core.base.base_agent import BaseAgent
 class BaseTask(IVecEnv):
     def __init__(
         self,
-        env_factory: Callable[[int], BaseEnv],
-        agent_factory: Callable[[int], BaseAgent],
+        env_factory: Callable[..., BaseEnv],
+        agent_factory: Callable[..., BaseAgent],
     ):
         self.config = {}
 
         self.env_factory = env_factory
+        self.env: BaseEnv = None
         self.agent_factory = agent_factory
+        self.agent: BaseAgent = None
         self.envs: List[BaseEnv] = []
 
     def load_config(

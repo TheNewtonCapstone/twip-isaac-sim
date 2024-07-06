@@ -10,7 +10,6 @@ from core.base.base_agent import BaseAgent
 from core.base.base_env import BaseEnv
 
 
-
 # TODO: should be called GenericTwipEnv
 class GenericEnv(BaseEnv):
     def __init__(self, sim_app: SimulationApp, world_settings, num_envs):
@@ -20,10 +19,6 @@ class GenericEnv(BaseEnv):
         super().construct(agent)
 
         import omni.isaac.core
-        from omni.isaac.core.utils.stage import get_current_stage
-        from pxr import Gf, PhysicsSchemaTools
-
-
         from omni.isaac.cloner import GridCloner
         from omni.isaac.core.articulations import ArticulationView
         from omni.isaac.core.utils.prims import define_prim
@@ -50,8 +45,6 @@ class GenericEnv(BaseEnv):
             prim_paths=self.agent_paths,
         )
 
-        #self.sim_view = omni.physics.tensors.create_simulation_view(self.world_settings["backend"], 0)
-
         self.twip_art_view = ArticulationView(
             prim_paths_expr="/World/envs/e.*/twip/body",
             name="twip_art_view",
@@ -68,9 +61,9 @@ class GenericEnv(BaseEnv):
         super().step(actions, render)
 
         # get observations from the cloned agents
-        # obs = self._gather_imus_frame()
+        obs = self._gather_imus_frame()
 
-        return []
+        return obs
 
     def reset(
         self,

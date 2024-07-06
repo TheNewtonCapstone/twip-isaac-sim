@@ -88,7 +88,9 @@ if __name__ == "__main__":
         f"Updated the following parameters: {rl_config['params']['config']['num_actors']}"
     )
 
-    sim_app = SimulationApp({"headless": cli_args.headless})
+    sim_app = SimulationApp(
+        {"headless": cli_args.headless}, experience="./apps/omni.isaac.sim.twip.kit"
+    )
 
     # ---------- #
     # SIMULATION #
@@ -122,7 +124,9 @@ if __name__ == "__main__":
                 dr.physics_view.randomize_articulation_view(
                     view_name=twip_view.name,
                     operation="direct",
-                    joint_velocities=rep.distribution.uniform(tuple([-200]*num_dof), tuple([200]*num_dof)),
+                    joint_velocities=rep.distribution.uniform(
+                        tuple([-200] * num_dof), tuple([200] * num_dof)
+                    ),
                 )
 
         rep.orchestrator.run()
@@ -133,7 +137,7 @@ if __name__ == "__main__":
                 reset_inds = list()
                 if frame_idx % 200 == 0:
                     # triggers reset every 200 steps
-                    reset_inds = np.arange(num_envs)    
+                    reset_inds = np.arange(num_envs)
                 dr.physics_view.step_randomization(reset_inds)
                 world.step(render=not cli_args.headless)
                 frame_idx += 1
