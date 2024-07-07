@@ -34,8 +34,8 @@ class BaseEnv(ABC):
 
         import omni.isaac.core
         from omni.isaac.core import World
-        from omni.isaac.core.utils.stage import create_new_stage, get_current_stage
-        from pxr import Gf, PhysicsSchemaTools, PhysxSchema, Sdf, UsdLux, UsdPhysics
+        from omni.isaac.core.utils.stage import get_current_stage
+        from pxr import Sdf, UsdLux
 
         stage = get_current_stage()
 
@@ -46,8 +46,6 @@ class BaseEnv(ABC):
             backend=self.world_settings["backend"],
             device=self.world_settings["device"],
         )
-        self.world.scene.add_default_ground_plane()
-        
 
         # Adjust physics scene settings (mainly for GPU memory allocation)
         phys_context = self.world.get_physics_context()
@@ -70,6 +68,6 @@ class BaseEnv(ABC):
     @abstractmethod
     def reset(
         self,
-        indices: torch.Tensor,
+        indices: torch.Tensor = None,
     ) -> Dict[str, torch.Tensor]:
         self.world.reset()

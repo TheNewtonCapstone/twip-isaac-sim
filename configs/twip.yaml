@@ -25,7 +25,7 @@ params:
         fixed_sigma: True
     mlp:
       units: [96, 96]
-      activation: relu
+      activation: tanh
       d2rl: False 
           
       initializer: 
@@ -40,7 +40,7 @@ params:
     multi_gpu: False
     ppo: True 
     mixed_precision: True
-    normalize_input: True
+    normalize_input: False
     normalize_value: True
     value_bootstrap: True
 
@@ -48,24 +48,24 @@ params:
       scale_value: 0.1
 
     normalize_advantage: True 
-    gamma: 0.99
+    gamma: 0.995
     tau: 0.95
     learning_rate: 3e-4
     lr_schedule: adaptive 
     bound_loss_type: regularisation
     kl_threshold: 0.008
-    score_to_win: 512
+    score_to_win: 128
     max_epochs: 1024
-    save_best_after: 64
+    save_best_after: 128
     save_frequency: 32
     grad_norm: 1.0 
     entropy_coef: 0
-    trucante_grad: True
+    trucante_grads: False
     e_clip: 0.2
-    num_actors: 64
-    horizon_length: 128
-    minibatch_size: 128
-    mini_epochs: 12
+    num_actors: 128
+    horizon_length: 16
+    minibatch_size: 512
+    mini_epochs: 6
     critic_coef: 2
     clip_value: True
     seq_length: 4
@@ -73,13 +73,4 @@ params:
 
     player:
       games_num: 2000
-
-    env_config:
-      skip: 8
-
-
-
-
-
-
 

@@ -8,7 +8,6 @@ from typing import Callable, Type
 def base_task_architect(
     env_factory: Callable,
     agent_factory: Callable,
-    sim_app: SimulationApp,
     task_class: Type,
 ):
     def base_task_creator(headless: bool, device: str, num_envs: int):

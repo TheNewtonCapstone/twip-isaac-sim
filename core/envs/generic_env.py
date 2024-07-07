@@ -23,6 +23,9 @@ class GenericEnv(BaseEnv):
         from omni.isaac.core.articulations import ArticulationView
         from omni.isaac.core.utils.prims import define_prim
 
+        # add a ground plane
+        self.world.scene.add_default_ground_plane()
+
         # clone the agent
         cloner = GridCloner(spacing=1)
         cloner.define_base_env("/World/envs")
@@ -56,9 +59,10 @@ class GenericEnv(BaseEnv):
         return self.base_agent_path
 
     def step(self, actions: torch.Tensor, render: bool) -> torch.Tensor:
-        # apply actions to the cloned agents
-
         super().step(actions, render)
+
+        # apply actions to the cloned agents
+        self._apply_actions(actions)
 
         # get observations from the cloned agents
         obs = self._gather_imus_frame()
@@ -68,16 +72,66 @@ class GenericEnv(BaseEnv):
     def reset(
         self,
         indices: torch.Tensor = None,
-    ) -> Dict[str, torch.Tensor]:
-        super().reset()
-        self.twip_art_view.initialize()
+    ) -> None:
+        assert indices is None or indices.ndim == 1, "Indices must be a 1D tensor"
+
+        # we assume it's a full reset
+        if indices is None:
+            super().reset(None)  # reset the world too, because we're doing a full reset
+
+            indices = torch.arange(self.num_envs)
+
+        num_to_reset = len(indices)
+
+        self.twip_art_view.set_joint_velocity_targets(
+            torch.zeros(num_to_reset, 2), indices=indices
+        )
+        self.twip_art_view.set_angular_velocities(
+            torch.zeros(num_to_reset, 3), indices=indices
+        )
+        self.twip_art_view.set_joint_positions(
+            torch.zeros(num_to_reset, 2), indices=indices
+        )
+        self.twip_art_view.set_joint_efforts(
+            torch.zeros(num_to_reset, 2), indices=indices
+        )
+
+        # orientations need to have the quaternion in WXYZ format, and 1 as the first element, the rest being zeros
+        orientations = torch.tile(torch.tensor([1.0, 0, 0, 0]), (num_to_reset, 1))
+
+        # from GridCloner
+        # translations should arrange all agents in a grid, with a spacing of 1, even if it's not a perfect square
+        # an agent should always be at the same position in the grid (same index as specified in indices)
+        spacing = 1
+        num_per_row = int(np.sqrt(self.num_envs))
+        num_rows = np.ceil(self.num_envs / num_per_row)
+        num_cols = np.ceil(self.num_envs / num_rows)
+
+        row_offset = 0.5 * spacing * (num_rows - 1)
+        col_offset = 0.5 * spacing * (num_cols - 1)
+
+        translations = torch.zeros(num_to_reset, 3)
+
+        for i, idx in enumerate(indices):
+            row = idx // num_cols
+            col = idx % num_cols
+            x = row_offset - row * spacing
+            y = col * spacing - col_offset
+
+            translations[i, 0] = x
+            translations[i, 1] = y
+            translations[i, 2] = 0.115
+
+        self.twip_art_view.set_local_poses(
+            translations=translations,
+            orientations=orientations,
+            indices=indices,
+        )
+
         return
 
     def _apply_actions(self, actions: torch.Tensor) -> None:
-        # 0. add the option to choose between position, velocity or torque (effort) control
-        # 1. create an articulation action for the view
-        # 2. apply the actions to the view
-        pass
+        self.twip_art_view.set_joint_efforts(actions)
 
     def _gather_imus_frame(self) -> torch.Tensor:
         from omni.isaac.sensor import _sensor

@@ -56,10 +56,10 @@ def setup_argparser() -> argparse.ArgumentParser:
         default=None,
     )
     parser.add_argument(
-        "--train",
+        "--play",
         action="store_true",
-        help="Train the agent using RL. Set to False to play.",
-        default=True,
+        help="Play the agent using a trained checkpoint.",
+        default=False,
     )
     parser.add_argument(
         "--num-envs",
@@ -85,8 +85,12 @@ if __name__ == "__main__":
         rl_config["params"]["config"]["num_actors"] = cli_args.num_envs
 
     print(
-        f"Updated the following parameters: {rl_config['params']['config']['num_actors']}"
+        f"Updated the following parameters: num_envs={rl_config['params']['config']['num_actors']}"
     )
+
+    if cli_args.play and cli_args.checkpoint is None:
+        print("Please provide a checkpoint to play the agent.")
+        exit(1)
 
     sim_app = SimulationApp(
         {"headless": cli_args.headless}, experience="./apps/omni.isaac.sim.twip.kit"
@@ -161,7 +165,6 @@ if __name__ == "__main__":
     task_architect = base_task_architect(
         generic_env_factory,
         twip_agent_factory,
-        sim_app,
         GenericTask,
     )
 
@@ -170,13 +173,19 @@ if __name__ == "__main__":
         "generic",
         {
             "vecenv_type": "RLGPU",
-            "env_creator": lambda **kwargs: task_architect(kwargs),
+            "env_creator": lambda **kwargs: task_architect(
+                cli_args.headless,
+                rl_config["device"],
+                cli_args.num_envs,
+            ),
         },
     )
     vecenv.register(
         "RLGPU",
         lambda config_name, num_actors, **kwargs: task_architect(
-            cli_args.headless, rl_config["device"], num_actors
+            cli_args.headless,
+            rl_config["device"],
+            num_actors,
         ),
     )
 
@@ -186,8 +195,8 @@ if __name__ == "__main__":
 
     runner.run(
         {
-            "train": cli_args.train,
-            "play": not cli_args.train,
+            "train": not cli_args.play,
+            "play": cli_args.play,
             "checkpoint": cli_args.checkpoint,
         }
     )
