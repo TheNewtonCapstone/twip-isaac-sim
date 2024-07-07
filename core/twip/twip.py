@@ -110,6 +110,7 @@ if __name__ == "__main__":
         twip = TwipAgent(twip_settings)
 
         env.construct(twip)
+        env.reset()
 
         world = env.world
         num_envs = env.num_envs
@@ -128,8 +129,8 @@ if __name__ == "__main__":
                 dr.physics_view.randomize_articulation_view(
                     view_name=twip_view.name,
                     operation="direct",
-                    joint_velocities=rep.distribution.uniform(
-                        tuple([-200] * num_dof), tuple([200] * num_dof)
+                    joint_efforts=rep.distribution.uniform(
+                        tuple([-10] * num_dof), tuple([10] * num_dof)
                     ),
                 )
 
@@ -143,7 +144,7 @@ if __name__ == "__main__":
                     # triggers reset every 200 steps
                     reset_inds = np.arange(num_envs)
                 dr.physics_view.step_randomization(reset_inds)
-                world.step(render=not cli_args.headless)
+                env.step(torch.zeros(num_envs, 2), render=True)
                 frame_idx += 1
 
     # ----------- #

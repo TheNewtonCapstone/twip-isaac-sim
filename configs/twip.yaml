@@ -25,51 +25,53 @@ params:
         fixed_sigma: True
     mlp:
       units: [96, 96]
-      activation: tanh
+      activation: relu
       d2rl: False 
           
       initializer: 
         name: default
-      regularizer: 
-        name: default
 
   config:
+    reward_shaper: 
+      scale_value: 0.1
+
     name: twip
     full_experiment_name: twip_balancing
     env_name: generic
     multi_gpu: False
     ppo: True 
-    mixed_precision: True
-    normalize_input: False
+
+    normalize_advantage: True 
+    normalize_input: True
     normalize_value: True
     value_bootstrap: True
 
-    reward_shaper: 
-      scale_value: 0.1
-
-    normalize_advantage: True 
-    gamma: 0.995
+    gamma: 0.99
     tau: 0.95
     learning_rate: 3e-4
     lr_schedule: adaptive 
+    schedule_type: standard
     bound_loss_type: regularisation
+    bounds_loss_coef: 0.0005
+
     kl_threshold: 0.008
+    entropy_coef: 0
+    trucante_grads: True
+    grad_norm: 1.5 
+    e_clip: 0.2
+    critic_coef: 2
+    clip_value: False
+
     score_to_win: 128
     max_epochs: 1024
     save_best_after: 128
     save_frequency: 32
-    grad_norm: 1.0 
-    entropy_coef: 0
-    trucante_grads: False
-    e_clip: 0.2
+
     num_actors: 128
-    horizon_length: 16
-    minibatch_size: 512
-    mini_epochs: 6
-    critic_coef: 2
-    clip_value: True
-    seq_length: 4
-    bounds_loss_coef: 0.0001
+    horizon_length: 128
+    minibatch_size: 512 # overriden by below parameter
+    minibatch_size_per_env: 8
+    mini_epochs: 12
 
     player:
       games_num: 2000

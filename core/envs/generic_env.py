@@ -59,10 +59,10 @@ class GenericEnv(BaseEnv):
         return self.base_agent_path
 
     def step(self, actions: torch.Tensor, render: bool) -> torch.Tensor:
-        super().step(actions, render)
-
         # apply actions to the cloned agents
         self._apply_actions(actions)
+
+        super().step(actions, render)
 
         # get observations from the cloned agents
         obs = self._gather_imus_frame()
@@ -77,7 +77,7 @@ class GenericEnv(BaseEnv):
 
         # we assume it's a full reset
         if indices is None:
-            super().reset(None)  # reset the world too, because we're doing a full reset
+            super().reset()  # reset the world too, because we're doing a full reset
 
             indices = torch.arange(self.num_envs)
 
@@ -86,9 +86,8 @@ class GenericEnv(BaseEnv):
         self.twip_art_view.set_joint_velocity_targets(
             torch.zeros(num_to_reset, 2), indices=indices
         )
-        self.twip_art_view.set_angular_velocities(
-            torch.zeros(num_to_reset, 3), indices=indices
-        )
+        # using set_velocities instead of individual methods (lin & ang), because it's the only method supported in the GPU pipeline
+        self.twip_art_view.set_velocities(torch.zeros(num_to_reset, 6), indices=indices)
         self.twip_art_view.set_joint_positions(
             torch.zeros(num_to_reset, 2), indices=indices
         )
