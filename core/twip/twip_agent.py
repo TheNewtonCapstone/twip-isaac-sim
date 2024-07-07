@@ -34,9 +34,6 @@ class TwipAgent(BaseAgent):
             self.config["twip_usd_path"], prim_path=twip_prim_path
         )  # /envs/e_0/twip
 
-        # needs to be imported within the function because of import dependencies
-
-        # TODO: Find out the velocity issue! You got this!
         from omni.isaac.sensor import IMUSensor
 
         world.reset()
