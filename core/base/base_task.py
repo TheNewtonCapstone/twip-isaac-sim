@@ -56,7 +56,7 @@ class BaseTask(IVecEnv):
     # RL-Games methods (required from IVecEnv)
 
     def step(
-        self, actions: torch.Tensor
+        self, actions: torch.Tensor = None
     ) -> Tuple[Dict[str, torch.Tensor], torch.Tensor, torch.Tensor, Dict[str, Any]]:
         # goes through a RL step (includes all the base RL things such as get obs, apply actions, etc.
         # args: actions to apply to the env
