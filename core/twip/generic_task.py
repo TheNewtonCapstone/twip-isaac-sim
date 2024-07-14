@@ -98,6 +98,7 @@ class GenericTask(BaseTask):
         rewards = torch.zeros(self.num_envs, device=self.device, dtype=torch.float32)
         dones = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
         env_info = self.get_env_info()
+        env_info["episode"] = {}
 
         if actions is None:
             return (
@@ -123,10 +124,11 @@ class GenericTask(BaseTask):
         obs[:, 3] = actions[:, 1]
 
         # the smaller the difference between current orientation and stable orientation, the higher the reward
-        rewards = compute_rewards_twip(twip_roll, twip_imu_obs[:, 5], actions)
+        rewards, episode = compute_rewards_twip(twip_roll, twip_imu_obs[:, 5], actions)
+        env_info["episode"] = episode
 
         # process failures (when falling)
-        dones = torch.where(torch.abs(twip_roll) > 0.25, True, False)
+        dones = torch.where(torch.abs(twip_roll) > 0.26, True, False)
 
         # creates a new tensor with only the indices of the environments that are done
         resets = dones.nonzero(as_tuple=False).flatten()
@@ -166,25 +168,32 @@ def compute_rewards_twip(
     roll: torch.Tensor,
     ang_vel_z: torch.Tensor,
     actions: torch.Tensor,
-) -> torch.Tensor:
+) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
     # computes the rewards based on the roll, angular velocity and actions
     # args: roll, angular velocity, actions
     # returns: rewards
 
-    combined_applied_vel = torch.abs(actions[:, 0]) + torch.abs(actions[:, 1])
+    combined_dof_vel = torch.abs(actions[:, 0]) + torch.abs(actions[:, 1])
 
     # the smaller the difference between current orientation and stable orientation, the higher the reward
-    rewards = (
-        1.0
-        - torch.tanh(8 * torch.abs(roll))
-        - 0.1 * torch.tanh(2 * torch.abs(ang_vel_z))
-        - 0.1 * torch.tanh(combined_applied_vel)
-    )
+    roll_rew = torch.tanh(6 * torch.abs(roll))
+    ang_vel_z_rew = torch.tanh(4 * torch.abs(ang_vel_z))
+    combined_dof_vel_rew = torch.tanh(combined_dof_vel) * 0.2
+
+    rewards = 1.0 - roll_rew - ang_vel_z_rew - combined_dof_vel_rew 
 
     # penalize for falling
-    rewards = torch.where(torch.abs(roll) > 0.25, -4.0, rewards)
+    rewards += torch.where(torch.abs(roll) > 0.26, -2.0, rewards)
 
-    return rewards
+    episode = {
+        "roll": torch.median(torch.abs(roll)), 
+        "roll_var": torch.var(torch.abs(roll)),
+        "roll_rew": torch.mean(roll_rew),
+        "ang_vel_z_rew": torch.mean(ang_vel_z_rew),
+        "combined_dof_vel_rew": torch.mean(combined_dof_vel_rew),
+    }
+
+    return rewards, episode
 
 
 @torch.jit.script
