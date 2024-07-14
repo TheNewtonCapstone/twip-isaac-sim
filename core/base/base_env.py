@@ -1,11 +1,6 @@
-import gc
 from abc import ABC, abstractmethod
-import time
-from typing import Dict, Tuple, Any
+from typing import Dict
 import torch
-import numpy as np
-
-from omni.isaac.kit import SimulationApp
 
 from core.base.base_agent import BaseAgent
 
@@ -20,12 +15,10 @@ from core.base.base_agent import BaseAgent
 class BaseEnv(ABC):
     def __init__(
         self,
-        sim_app: SimulationApp,
         world_settings: Dict,
         num_envs: int,
     ) -> None:
         self.world_settings = world_settings
-        self.sim_app = sim_app
         self.num_envs = num_envs
 
     @abstractmethod
@@ -39,7 +32,7 @@ class BaseEnv(ABC):
 
         stage = get_current_stage()
 
-        self.world = World(
+        self.world: World = World(
             physics_dt=self.world_settings["physics_dt"],
             rendering_dt=self.world_settings["rendering_dt"],
             stage_units_in_meters=self.world_settings["stage_units_in_meters"],
@@ -60,6 +53,8 @@ class BaseEnv(ABC):
         sun = UsdLux.DistantLight.Define(stage, Sdf.Path("/distantLight"))
         sun.CreateIntensityAttr(500)
 
+        return None
+
     @abstractmethod
     def step(self, actions: torch.Tensor, render: bool) -> torch.Tensor:
         self.world.step(render=render)
@@ -71,3 +66,5 @@ class BaseEnv(ABC):
         indices: torch.Tensor = None,
     ) -> Dict[str, torch.Tensor]:
         self.world.reset()
+
+        return None

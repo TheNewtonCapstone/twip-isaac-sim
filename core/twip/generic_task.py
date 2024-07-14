@@ -39,22 +39,22 @@ class GenericTask(BaseTask):
                 [
                     -np.pi,
                     -np.Inf,
-                    -100.0,
-                    -100.0,
+                    -1.0,
+                    -1.0,
                 ]
             ),
             high=np.array(
                 [
                     np.pi,
                     np.Inf,
-                    100.0,
-                    100.0,
+                    1.0,
+                    1.0,
                 ]
             ),
         )
         config["action_space"] = gym.spaces.Box(
-            np.ones(config["num_actions"]) * -100.0,
-            np.ones(config["num_actions"]) * 100.0,
+            np.ones(config["num_actions"]) * -1.0,
+            np.ones(config["num_actions"]) * 1.0,
         )
         config["state_space"] = gym.spaces.Box(
             np.ones(config["num_states"]) * -np.Inf,
@@ -88,8 +88,6 @@ class GenericTask(BaseTask):
         # goes through a RL step (includes all the base RL things such as get obs, apply actions, etc.
         # args: actions to apply to the env
         # returns: obs, rewards, resets, info
-
-        super().step(actions)
 
         obs = torch.zeros(
             self.num_envs,
@@ -125,15 +123,18 @@ class GenericTask(BaseTask):
         obs[:, 3] = actions[:, 1]
 
         # the smaller the difference between current orientation and stable orientation, the higher the reward
-        rewards = compute_rewards_twip(twip_roll, twip_imu_obs[:, 3], actions)
+        rewards = compute_rewards_twip(twip_roll, twip_imu_obs[:, 5], actions)
 
         # process failures (when falling)
-        dones = torch.where(torch.abs(twip_roll) > 0.2, True, False)
+        dones = torch.where(torch.abs(twip_roll) > 0.25, True, False)
 
         # creates a new tensor with only the indices of the environments that are done
         resets = dones.nonzero(as_tuple=False).flatten()
         if len(resets) > 0:
             self.env.reset(resets)
+
+        # clears the last 2 observations if the twips are reset
+        obs[resets, :] = 0.0
 
         return (
             {"obs": obs},
@@ -181,7 +182,7 @@ def compute_rewards_twip(
     )
 
     # penalize for falling
-    rewards = torch.where(torch.abs(roll) > 0.2, -4.0, rewards)
+    rewards = torch.where(torch.abs(roll) > 0.25, -4.0, rewards)
 
     return rewards
 

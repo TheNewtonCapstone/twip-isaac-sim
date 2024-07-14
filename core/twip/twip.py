@@ -1,5 +1,5 @@
+from datetime import datetime
 import os
-import yaml
 import torch
 
 import argparse
@@ -11,8 +11,7 @@ from rl_games.common.algo_observer import IsaacAlgoObserver
 from rl_games.common import env_configurations, vecenv
 
 from core.envs.generic_env import GenericEnv
-from core.base.base_agent import BaseAgent
-from core.twip.twip_agent import TwipAgent, WheelDriveType
+from core.twip.twip_agent import TwipAgent
 from core.twip.generic_task import GenericTask
 from core.utils.env import base_task_architect
 from core.utils.path import get_current_path
@@ -102,7 +101,6 @@ if __name__ == "__main__":
 
     if cli_args.sim_only:
         env = GenericEnv(
-            sim_app=sim_app,
             world_settings=world_config,
             num_envs=cli_args.num_envs,
         )
@@ -144,7 +142,7 @@ if __name__ == "__main__":
                     # triggers reset every 200 steps
                     reset_inds = np.arange(num_envs)
                 dr.physics_view.step_randomization(reset_inds)
-                env.step(torch.zeros(num_envs, 2), render=True)
+                env.step(torch.zeros(num_envs, 2), render=cli_args.headless)
                 frame_idx += 1
 
     # ----------- #
@@ -155,13 +153,14 @@ if __name__ == "__main__":
 
     def generic_env_factory() -> GenericEnv:
         return GenericEnv(
-            sim_app=sim_app,
             world_settings=world_config,
             num_envs=cli_args.num_envs,
         )
 
     def twip_agent_factory() -> TwipAgent:
         return TwipAgent(twip_settings)
+    
+    rl_config["params"]["config"]["full_experiment_name"] = rl_config["params"]["config"]["full_experiment_name"] + "_" + datetime.now().strftime("%d%m%y%H%M%S")
 
     task_architect = base_task_architect(
         generic_env_factory,

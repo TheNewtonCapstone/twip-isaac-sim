@@ -24,7 +24,7 @@ params:
           val: 0
         fixed_sigma: True
     mlp:
-      units: [96, 96]
+      units: [128, 96, 64]
       activation: relu
       d2rl: False 
           
@@ -58,11 +58,11 @@ params:
     entropy_coef: 0
     trucante_grads: True
     grad_norm: 1.5 
-    e_clip: 0.2
     critic_coef: 2
-    clip_value: False
+    clip_value: False # no need to clip, because we're mathematically bound to 1
+    e_clip: 1
 
-    score_to_win: 128
+    score_to_win: 32768
     max_epochs: 1024
     save_best_after: 128
     save_frequency: 32

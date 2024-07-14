@@ -1,19 +1,16 @@
-import gc
 import torch
 import numpy as np
-from abc import ABC, abstractmethod
-from typing import Dict, Tuple, Any
-
-from isaacsim import SimulationApp
 
 from core.base.base_agent import BaseAgent
 from core.base.base_env import BaseEnv
+from core.sensors.imu.imu import IMU
+from core.twip.twip_agent import TwipAgent
 
 
 # TODO: should be called GenericTwipEnv
 class GenericEnv(BaseEnv):
-    def __init__(self, sim_app: SimulationApp, world_settings, num_envs):
-        super().__init__(sim_app, world_settings, num_envs=num_envs)
+    def __init__(self, world_settings, num_envs):
+        super().__init__(world_settings, num_envs=num_envs)
 
     def construct(self, agent: BaseAgent) -> bool:
         super().construct(agent)
@@ -56,28 +53,47 @@ class GenericEnv(BaseEnv):
 
         self.world.reset()
 
+        self.imu = IMU(
+            {
+                "prim_path": "/World/envs/e.*/twip/body",
+                "history_length": 0,
+                "update_period": 0,
+                "offset": {"pos": (0, 0, 0), "rot": (1.0, 0.0, 0.0, 0.0)},
+            }
+        )
+
         return self.base_agent_path
 
     def step(self, actions: torch.Tensor, render: bool) -> torch.Tensor:
         # apply actions to the cloned agents
         self._apply_actions(actions)
 
-        super().step(actions, render)
+        # From IsaacLab (SimulationContext)
+        # need to do one step to refresh the app
+        # reason: physics has to parse the scene again and inform other extensions like hydra-delegate.
+        # without this the app becomes unresponsive. If render is True, the world updates the app automatically.
+        if not render:
+            self.world.app.update()
+
+        self.world.step(render=render)
 
         # get observations from the cloned agents
+        self.imu.update(self.world.get_physics_dt())
         obs = self._gather_imus_frame()
 
         return obs
 
     def reset(
         self,
-        indices: torch.Tensor = None,
+        indices: torch.LongTensor | None = None,
     ) -> None:
         assert indices is None or indices.ndim == 1, "Indices must be a 1D tensor"
 
         # we assume it's a full reset
         if indices is None:
-            super().reset()  # reset the world too, because we're doing a full reset
+            print("FULL RESET")
+
+            self.world.reset()  # reset the world too, because we're doing a full reset
 
             indices = torch.arange(self.num_envs)
 
@@ -133,6 +149,9 @@ class GenericEnv(BaseEnv):
         self.twip_art_view.set_joint_efforts(actions)
 
     def _gather_imus_frame(self) -> torch.Tensor:
+        imu_data = self.imu.data
+        return torch.cat((imu_data.lin_acc_b, imu_data.ang_vel_b, imu_data.quat_w), dim=1)
+    
         from omni.isaac.sensor import _sensor
 
         i_imu = _sensor.acquire_imu_sensor_interface()
