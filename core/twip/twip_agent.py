@@ -8,10 +8,6 @@ from core.base.base_agent import BaseAgent
 from typing import Dict
 
 
-class WheelDriveType(Enum):
-    LEFT = 0
-    RIGHT = 1
-
 
 # when implementing ROS, check the following link: https://github.com/ros2/examples/blob/rolling/rclpy/topics/minimal_publisher
 # probably a good idea to make separate wrapper classes for each joint (or rather, for each object that will publish/subscribe to ROS messages)
@@ -34,13 +30,13 @@ class TwipAgent(BaseAgent):
             self.config["twip_usd_path"], prim_path=twip_prim_path
         )  # /envs/e_0/twip
 
-        from omni.isaac.sensor import IMUSensor
+        #from omni.isaac.sensor import IMUSensor
 
         world.reset()
 
-        self.imu: IMUSensor = world.scene.add(
-            IMUSensor(
-                prim_path=twip_prim_path + "/body/imu",
-                name="imu",
-            )
-        )
+        #self.imu: IMUSensor = world.scene.add(
+        #    IMUSensor(
+        #        prim_path=twip_prim_path + "/body/imu",
+        #        name="imu",
+        #    )
+        #)
