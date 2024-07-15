@@ -28,6 +28,7 @@ class GenericTask(BaseTask):
         config["headless"] = headless
 
         config["num_envs"] = num_envs
+        config["max_episode_length"] = 256
 
         config["num_agents"] = 1
         config["num_observations"] = 4
@@ -84,29 +85,23 @@ class GenericTask(BaseTask):
     # RL-Games methods (required from IVecEnv)
     def step(
         self, actions: torch.Tensor
-    ) -> Tuple[Dict[str, torch.Tensor], torch.Tensor, torch.Tensor, Dict[str, Any]]:
+    ) -> Tuple[
+        Dict[str, torch.Tensor], torch.Tensor, torch.Tensor, Dict[str, Any] | None
+    ]:
         # goes through a RL step (includes all the base RL things such as get obs, apply actions, etc.
         # args: actions to apply to the env
         # returns: obs, rewards, resets, info
 
-        obs = torch.zeros(
-            self.num_envs,
-            self.num_observations,
-            device=self.device,
-            dtype=torch.float32,
-        )
-        rewards = torch.zeros(self.num_envs, device=self.device, dtype=torch.float32)
-        dones = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
-        env_info = self.get_env_info()
-        env_info["episode"] = {}
-
         if actions is None:
             return (
-                {"obs": obs},
-                rewards,
-                dones,
-                env_info,
+                {"obs": self.obs_buf},
+                self.rewards_buf,
+                self.dones_buf,
+                None,
             )
+
+        env_info = self.get_env_info()
+        self.progress_buf += 1
 
         # shape of twip_imu_obs: (num_envs, 10)
         # (:, 0:3) -> linear acceleration
@@ -118,30 +113,38 @@ class GenericTask(BaseTask):
 
         # get the roll angle only
         twip_roll = roll_from_quat(twip_imu_obs[:, 6:10])
-        obs[:, 0] = twip_roll
-        obs[:, 1] = twip_imu_obs[:, 5]  # angular velocity on z-axis
-        obs[:, 2] = actions[:, 0]
-        obs[:, 3] = actions[:, 1]
+
+        self.obs_buf[:, 0] = twip_roll
+        self.obs_buf[:, 1] = twip_imu_obs[:, 5]  # angular velocity on z-axis
+        self.obs_buf[:, 2] = actions[:, 0]
+        self.obs_buf[:, 3] = actions[:, 1]
 
         # the smaller the difference between current orientation and stable orientation, the higher the reward
-        rewards, episode = compute_rewards_twip(twip_roll, twip_imu_obs[:, 5], actions)
-        env_info["episode"] = episode
+        self.rewards_buf, episode_info = compute_rewards_twip(
+            twip_roll, twip_imu_obs[:, 5], actions
+        )
+
+        env_info["episode"] = episode_info
 
         # process failures (when falling)
-        dones = torch.where(torch.abs(twip_roll) > 0.26, True, False)
+        self.dones_buf = torch.where(torch.abs(twip_roll) > 0.26, True, False)
+        self.dones_buf = torch.where(
+            self.progress_buf >= self.max_episode_length - 1, True, self.dones_buf
+        )
 
         # creates a new tensor with only the indices of the environments that are done
-        resets = dones.nonzero(as_tuple=False).flatten()
+        resets = self.dones_buf.nonzero(as_tuple=False).flatten()
         if len(resets) > 0:
             self.env.reset(resets)
 
-        # clears the last 2 observations if the twips are reset
-        obs[resets, :] = 0.0
+        # clears the last 2 observations & the progress if the twips are reset
+        self.obs_buf[resets, :] = 0.0
+        self.progress_buf[resets] = 0
 
         return (
-            {"obs": obs},
-            rewards,
-            dones,
+            {"obs": self.obs_buf},
+            self.rewards_buf,
+            self.dones_buf,
             env_info,
         )
 
@@ -180,16 +183,18 @@ def compute_rewards_twip(
     ang_vel_z_rew = torch.tanh(4 * torch.abs(ang_vel_z))
     combined_dof_vel_rew = torch.tanh(combined_dof_vel) * 0.2
 
-    rewards = 1.0 - roll_rew - ang_vel_z_rew - combined_dof_vel_rew 
+    rewards = 1.0 - roll_rew - ang_vel_z_rew - combined_dof_vel_rew
 
     # penalize for falling
     rewards += torch.where(torch.abs(roll) > 0.26, -2.0, rewards)
 
     episode = {
-        "roll": torch.median(torch.abs(roll)), 
+        "roll": torch.median(torch.abs(roll)),
         "roll_var": torch.var(torch.abs(roll)),
         "roll_rew": torch.mean(roll_rew),
+        "ang_vel_z": torch.median(torch.abs(ang_vel_z)),
         "ang_vel_z_rew": torch.mean(ang_vel_z_rew),
+        "combined_dof_vel": torch.median(combined_dof_vel),
         "combined_dof_vel_rew": torch.mean(combined_dof_vel_rew),
     }
 
