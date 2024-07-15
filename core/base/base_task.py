@@ -34,7 +34,9 @@ class BaseTask(IVecEnv):
 
         self.headless: bool = headless
         self.device: str = device
+
         self.num_envs: int = num_envs
+        self.max_episode_length: int = self.config["max_episode_length"]
 
         self.num_agents: int = self.config["num_agents"]
         self.num_observations: int = self.config["num_observations"]
@@ -45,6 +47,8 @@ class BaseTask(IVecEnv):
         self.action_space: gym.spaces.Box = self.config["action_space"]
         self.state_space: gym.spaces.Box = self.config["state_space"]
 
+        self._setup_buffers()
+
         # rest of config inside self.config
 
     def __str__(self):
@@ -52,6 +56,29 @@ class BaseTask(IVecEnv):
 
     def construct(self) -> bool:
         pass
+
+    def _setup_buffers(self) -> None:
+        self.obs_buf = torch.zeros(
+            self.num_envs,
+            self.num_observations,
+            device=self.device,
+            dtype=torch.float32,
+        )
+        self.rewards_buf = torch.zeros(
+            self.num_envs,
+            device=self.device,
+            dtype=torch.float32,
+        )
+        self.dones_buf = torch.zeros(
+            self.num_envs,
+            device=self.device,
+            dtype=torch.bool,
+        )
+        self.progress_buf = torch.zeros(
+            self.num_envs,
+            device=self.device,
+            dtype=torch.long,
+        )
 
     # RL-Games methods (required from IVecEnv)
 

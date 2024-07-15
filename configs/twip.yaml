@@ -64,8 +64,8 @@ params:
 
     score_to_win: 32768
     max_epochs: 1024
-    save_best_after: 128
-    save_frequency: 32
+    save_best_after: 96
+    save_frequency: 64
 
     num_actors: 128
     horizon_length: 128
