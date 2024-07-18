@@ -18,14 +18,14 @@ from core.utils.path import get_current_path
 from core.utils.config import load_config
 
 twip_settings = {
-    "twip_urdf_path": os.path.join(get_current_path(__file__), "assets/twip.urdf"),
-    "twip_usd_path": os.path.join(get_current_path(__file__), "assets/twip.usd"),
+    "twip_urdf_path": os.path.join(get_current_path(__file__), "core/twip/assets/twip.urdf"),
+    "twip_usd_path": os.path.join(get_current_path(__file__), "core/twip/assets/twip.usd"),
 }
 
 
 def setup_argparser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="core/twip/twip.py", description="Entrypoint for any TWIP-related actions."
+        prog="twip.py", description="Entrypoint for any TWIP-related actions."
     )
     parser.add_argument(
         "--headless", action="store_true", help="Run in headless mode.", default=False
@@ -66,6 +66,12 @@ def setup_argparser() -> argparse.ArgumentParser:
         help="Number of environments to run (will be read from the rl-config if not specified).",
         default=-1,
     )
+    parser.add_argument(
+        "--export-onnx",
+        action="store_true",
+        help="Exports checkpoint as ONNX model.",
+        default=False
+    )
 
     return parser
 
@@ -90,6 +96,9 @@ if __name__ == "__main__":
     if cli_args.play and cli_args.checkpoint is None:
         print("Please provide a checkpoint to play the agent.")
         exit(1)
+
+    # if we're exporting, don't show it
+    cli_args.headless = cli_args.headless or cli_args.export_onnx
 
     sim_app = SimulationApp(
         {"headless": cli_args.headless}, experience="./apps/omni.isaac.sim.twip.kit"
@@ -191,12 +200,57 @@ if __name__ == "__main__":
 
     runner = Runner(IsaacAlgoObserver())
     runner.load(rl_config)
-    runner.reset()
 
-    runner.run(
-        {
-            "train": not cli_args.play,
-            "play": cli_args.play,
-            "checkpoint": cli_args.checkpoint,
-        }
-    )
+    # we're not exporting nor purely simulating, so we're training
+    if not cli_args.export_onnx:
+        runner.reset()
+        runner.run(
+            {
+                "train": not cli_args.play,
+                "play": cli_args.play,
+                "checkpoint": cli_args.checkpoint,
+            }
+        )
+
+        exit(1)
+
+    # Load model from checkpoint
+    player = runner.create_player()
+    player.restore(cli_args.checkpoint)
+
+    # Create dummy observations tensor for tracing torch model
+    obs_shape = player.obs_shape
+    actions_num = player.actions_num
+    obs_num = obs_shape[0]
+    dummy_input = torch.zeros(obs_shape, device=rl_config["device"])
+
+    # Simplified network for actor inference
+    # Tested for continuous_a2c_logstd
+    class ActorModel(torch.nn.Module):
+        def __init__(self, a2c_network):
+            super().__init__()
+            self.a2c_network = a2c_network
+
+        def forward(self, x):
+            x = self.a2c_network.actor_mlp(x)
+            x = self.a2c_network.mu(x)
+            return x
+
+    model = ActorModel(player.model.a2c_network)
+
+    # Since rl_games uses dicts, we can flatten the inputs and outputs of the model: see https://github.com/Denys88/rl_games/issues/92
+    # Not necessary with the custom ActorModel defined above, but code is included here if needed
+    torch.onnx.export(model, dummy_input, f"{cli_args.checkpoint}.onnx", verbose=True,
+                        input_names=['observations'],
+                        output_names=['actions'])  # outputs are mu (actions), sigma, value
+    traced = torch.jit.trace(model, dummy_input, check_trace=True)
+    flattened_outputs = traced(dummy_input)
+
+    print(f"Exported to {cli_args.checkpoint}.onnx!")
+
+    # Print dummy output and model output (make sure these have the same values)
+    print("Flattened outputs: ", flattened_outputs)
+    print(model.forward(dummy_input))
+
+    print("# Observations: ", obs_num)
+    print("# Actions: ", actions_num)
