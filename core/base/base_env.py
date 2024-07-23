@@ -3,6 +3,7 @@ from typing import Dict
 import torch
 
 from core.base.base_agent import BaseAgent
+from core.terrain.terrain import TerrainBuilder
 
 # TODO: separate into 3 classes: BaseEnv, BaseTask, BaseAgent
 # BaseEnv: contains the world, agents and settings
@@ -22,7 +23,7 @@ class BaseEnv(ABC):
         self.num_envs = num_envs
 
     @abstractmethod
-    def construct(self, agent: BaseAgent) -> str:
+    def construct(self, agent: BaseAgent, terrain: TerrainBuilder) -> str:
         self.agent = agent  # save the agent class for informative purposes (i.e. introspection/debugging)
 
         import omni.isaac.core

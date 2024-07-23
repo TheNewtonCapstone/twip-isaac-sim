@@ -11,6 +11,9 @@ from rl_games.common.algo_observer import IsaacAlgoObserver
 from rl_games.common import env_configurations, vecenv
 
 from core.envs.generic_env import GenericEnv
+from core.envs.procedural_env import ProceduralEnv
+from core.terrain.world_plane_terrain import DefaultGroundPlaneBuilder
+from core.terrain.flat_terrain import FlatTerrainBuilder
 from core.twip.twip_agent import TwipAgent
 from core.twip.generic_task import GenericTask
 from core.utils.env import base_task_architect
@@ -18,8 +21,12 @@ from core.utils.path import get_current_path
 from core.utils.config import load_config
 
 twip_settings = {
-    "twip_urdf_path": os.path.join(get_current_path(__file__), "core/twip/assets/twip.urdf"),
-    "twip_usd_path": os.path.join(get_current_path(__file__), "core/twip/assets/twip.usd"),
+    "twip_urdf_path": os.path.join(
+        get_current_path(__file__), "core/twip/assets/twip.urdf"
+    ),
+    "twip_usd_path": os.path.join(
+        get_current_path(__file__), "core/twip/assets/twip.usd"
+    ),
 }
 
 
@@ -70,7 +77,7 @@ def setup_argparser() -> argparse.ArgumentParser:
         "--export-onnx",
         action="store_true",
         help="Exports checkpoint as ONNX model.",
-        default=False
+        default=False,
     )
 
     return parser
@@ -109,14 +116,13 @@ if __name__ == "__main__":
     # ---------- #
 
     if cli_args.sim_only:
-        env = GenericEnv(
+        env = ProceduralEnv(
             world_settings=world_config,
             num_envs=cli_args.num_envs,
         )
-
         twip = TwipAgent(twip_settings)
 
-        env.construct(twip)
+        env.construct(twip, FlatTerrainBuilder())
         env.reset()
 
         world = env.world
@@ -168,8 +174,12 @@ if __name__ == "__main__":
 
     def twip_agent_factory() -> TwipAgent:
         return TwipAgent(twip_settings)
-    
-    rl_config["params"]["config"]["full_experiment_name"] = rl_config["params"]["config"]["full_experiment_name"] + "_" + datetime.now().strftime("%d%m%y%H%M%S")
+
+    rl_config["params"]["config"]["full_experiment_name"] = (
+        rl_config["params"]["config"]["full_experiment_name"]
+        + "_"
+        + datetime.now().strftime("%d%m%y%H%M%S")
+    )
 
     task_architect = base_task_architect(
         generic_env_factory,
@@ -240,9 +250,14 @@ if __name__ == "__main__":
 
     # Since rl_games uses dicts, we can flatten the inputs and outputs of the model: see https://github.com/Denys88/rl_games/issues/92
     # Not necessary with the custom ActorModel defined above, but code is included here if needed
-    torch.onnx.export(model, dummy_input, f"{cli_args.checkpoint}.onnx", verbose=True,
-                        input_names=['observations'],
-                        output_names=['actions'])  # outputs are mu (actions), sigma, value
+    torch.onnx.export(
+        model,
+        dummy_input,
+        f"{cli_args.checkpoint}.onnx",
+        verbose=True,
+        input_names=["observations"],
+        output_names=["actions"],
+    )  # outputs are mu (actions), sigma, value
     traced = torch.jit.trace(model, dummy_input, check_trace=True)
     flattened_outputs = traced(dummy_input)
 
