@@ -1,0 +1,78 @@
+device: "cuda"
+
+params:
+  seed: 12341
+
+  algo: 
+    name: a2c_continuous
+
+  model:
+    name: continuous_a2c_logstd
+
+  network:
+    name: actor_critic
+    separate: False
+    space: 
+      continuous: 
+        mu_activation: None 
+        sigma_activation: None 
+
+        mu_init:
+          name: default
+        sigma_init:
+          name: const_initializer
+          val: 0
+        fixed_sigma: True
+    mlp:
+      units: [256, 128, 64]
+      activation: elu
+      d2rl: False 
+          
+      initializer: 
+        name: default
+
+  config:
+    reward_shaper: 
+      scale_value: 0.1
+
+    name: twip
+    full_experiment_name: twip_balancing
+    env_name: generic
+    multi_gpu: False
+    ppo: True 
+
+    normalize_advantage: True 
+    normalize_input: True
+    normalize_value: True
+    value_bootstrap: True
+
+    gamma: 0.99
+    tau: 0.95 # is actually lambda, but conflicts with Python keyword
+    learning_rate: 5e-4 # overriden by the adaptive lr_schedule below
+    lr_schedule: adaptive 
+    schedule_type: standard
+    bound_loss_type: regularisation
+    bounds_loss_coef: 0.0001
+
+    kl_threshold: 0.008
+    entropy_coef: 0.0
+    trucante_grads: True
+    grad_norm: 1.0
+    critic_coef: 4
+    clip_value: False # no need to clip, because we're mathematically bound to 1
+    e_clip: 1
+
+    score_to_win: 32768
+    max_epochs: 1024
+    save_best_after: 96
+    save_frequency: 64
+
+    num_actors: 128
+    horizon_length: 128
+    minibatch_size: 512 # overriden by below parameter
+    minibatch_size_per_env: 256
+    mini_epochs: 4
+
+    player:
+      games_num: 2000
+
