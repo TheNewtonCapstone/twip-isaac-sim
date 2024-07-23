@@ -17,8 +17,8 @@ import core.utils.math as math_utils
 class IMU(SensorBase):
     """The inertia measurement unit sensor.
 
-    The sensor can be attached to any RigidObject in the scene. The sensor provides the linear acceleration and angular
-    velocity of the object in the body frame. The sensor also provides the orientation of the object in the world frame.
+    The sensor can be attached to any RigidObject in the scene, which becomes the reference frame. The sensor provides the linear acceleration and angular
+    velocity of the object in the reference frame. The sensor also provides the orientation of the object in the world frame.
     """
 
     def __init__(self, config: Dict):
