@@ -22,6 +22,7 @@ class GenericTask(BaseTask):
         headless: bool,
         device: str,
         num_envs: int,
+        domain_rand: bool = False,
         config: Dict[Any, str] = {},
     ) -> None:
         config["device"] = device
@@ -63,7 +64,8 @@ class GenericTask(BaseTask):
         )
 
         # task-specific config
-        config["domain_randomization"] = {}
+        config["domain_randomization"] = domain_rand
+        self.frame_idx = 0
 
         print(f"{self.__class__.__name__} loaded config {config}")
 
@@ -75,6 +77,7 @@ class GenericTask(BaseTask):
         )
 
     def construct(self) -> bool:
+        print(f"Constructing {self.__class__.__name__}")
         self.env = self.env_factory()
         self.agent = self.agent_factory()
 

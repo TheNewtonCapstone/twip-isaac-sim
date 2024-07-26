@@ -47,6 +47,8 @@ class BaseTask(IVecEnv):
         self.action_space: gym.spaces.Box = self.config["action_space"]
         self.state_space: gym.spaces.Box = self.config["state_space"]
 
+        self.domain_randomization: bool = self.config.get("domain_randomization", False)
+
         self._setup_buffers()
 
         # rest of config inside self.config

@@ -9,8 +9,8 @@ from core.twip.twip_agent import TwipAgent
 
 # TODO: should be called GenericTwipEnv
 class GenericEnv(BaseEnv):
-    def __init__(self, world_settings, num_envs):
-        super().__init__(world_settings, num_envs=num_envs)
+    def __init__(self, world_settings, num_envs, domain_rand=False):
+        super().__init__(world_settings, num_envs=num_envs, domain_rand=domain_rand)
 
     def construct(self, agent: BaseAgent) -> bool:
         super().construct(agent)
@@ -62,6 +62,13 @@ class GenericEnv(BaseEnv):
             }
         )
 
+        # Setting up domain randomization if enabled
+        if self.domain_rand:
+            print("Domain randomization enabled")
+            self.domain_randomization()
+
+        self.frame_idx = 0
+
         return self.base_agent_path
 
     def step(self, actions: torch.Tensor, render: bool) -> torch.Tensor:
@@ -75,11 +82,18 @@ class GenericEnv(BaseEnv):
         if not render:
             self.world.app.update()
 
+        # domain randomization
+        if self.domain_rand:
+            self.step_randomization()
+
         self.world.step(render=render)
 
         # get observations from the cloned agents
         self.imu.update(self.world.get_physics_dt())
         obs = self._gather_imus_frame()
+
+        # if domain randomization is enabled, we need to update the frame index
+        self.frame_idx += 1
 
         return obs
 
@@ -150,8 +164,10 @@ class GenericEnv(BaseEnv):
 
     def _gather_imus_frame(self) -> torch.Tensor:
         imu_data = self.imu.data
-        return torch.cat((imu_data.lin_acc_b, imu_data.ang_vel_b, imu_data.quat_w), dim=1)
-    
+        return torch.cat(
+            (imu_data.lin_acc_b, imu_data.ang_vel_b, imu_data.quat_w), dim=1
+        )
+
         from omni.isaac.sensor import _sensor
 
         i_imu = _sensor.acquire_imu_sensor_interface()
@@ -177,3 +193,32 @@ class GenericEnv(BaseEnv):
             )
 
         return imus_frame
+
+    def domain_randomization(self) -> None:
+        import omni.replicator.isaac as dr
+        import omni.replicator.core as rep
+
+        self.dr = dr
+
+        # domain randomization
+        self.dr.physics_view.register_simulation_context(self.world)
+        self.dr.physics_view.register_articulation_view(self.twip_art_view)
+
+        with self.dr.trigger.on_rl_frame(num_envs=self.num_envs):
+            with self.dr.gate.on_interval(interval=100):
+                self.dr.physics_view.randomize_articulation_view(
+                    view_name=self.twip_art_view.name,
+                    operation="scaling",
+                    damping=rep.distribution.uniform(0.5, 2.0),
+                    stiffness=rep.distribution.uniform(0.5, 2.0),
+                )
+
+        rep.orchestrator.run()
+        self.frame_idx = 0
+
+    def step_randomization(self) -> None:
+        reset_inds = list()
+        if self.frame_idx % 200 == 0:
+            # triggers reset every 200 steps
+            reset_inds = np.arange(self.num_envs)
+        self.dr.physics_view.step_randomization(reset_inds)

@@ -1,0 +1,47 @@
+
+randomize: True
+randomization_params:
+  # specify which attributes to randomize for each actor type and property
+  frequency: 200   # Define how many environment steps between generating new randomizations
+  # observations:
+  #   range: [0, .002] # range for the white noise
+  #   operation: "additive"
+  #   distribution: "gaussian"
+  # actions:
+  #   range: [0., .02]
+  #   operation: "additive"
+  #   distribution: "gaussian"
+  color: True
+  rigid_body_properties:
+    mass:
+      range: [0.5, 1.5]
+      operation: "scaling"
+      distribution: "uniform"
+      setup_only: False # If True, property will only be randomized once before simulation is started. See Domain Randomization Documentation for more info.
+    # inertia: # Needs modification to code to randomize
+    #   range: [0.5, 1.5]
+    #   operation: "scaling"
+    #   distribution: "uniform"
+    #   setup_only: False
+  rigid_shape_properties:
+    friction: 
+      range: [0.5, 1.5]
+      operation: "scaling"
+      distribution: "uniform"
+      setup_only: False 
+  dof_properties:
+    damping: 
+      range: [0.5, 1.5]
+      operation: "scaling"
+      distribution: "uniform"
+      setup_only: False
+    armature:
+      range: [0., 0.01]
+      operation: "additive"
+      distribution: "uniform"
+      setup_only: False
+    friction:
+      range: [0.5, 1.5]
+      operation: "scaling"
+      distribution: "uniform"
+      setup_only: False
