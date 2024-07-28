@@ -17,11 +17,11 @@ class BaseEnv(ABC):
         self,
         world_settings: Dict,
         num_envs: int,
-        domain_rand: bool = False,
+        randomization_settings: Dict,
     ) -> None:
         self.world_settings = world_settings
         self.num_envs = num_envs
-        self.domain_rand = domain_rand
+        self.randomization_settings = randomization_settings
 
     @abstractmethod
     def construct(self, agent: BaseAgent) -> str:

@@ -9,8 +9,12 @@ from core.twip.twip_agent import TwipAgent
 
 # TODO: should be called GenericTwipEnv
 class GenericEnv(BaseEnv):
-    def __init__(self, world_settings, num_envs, domain_rand=False):
-        super().__init__(world_settings, num_envs=num_envs, domain_rand=domain_rand)
+    def __init__(self, world_settings, num_envs, randomization_settings):
+        super().__init__(
+            world_settings,
+            num_envs=num_envs,
+            randomization_settings=randomization_settings,
+        )
 
     def construct(self, agent: BaseAgent) -> bool:
         super().construct(agent)
@@ -63,9 +67,13 @@ class GenericEnv(BaseEnv):
         )
 
         # Setting up domain randomization if enabled
-        if self.domain_rand:
-            print("Domain randomization enabled")
-            self.domain_randomization()
+        self.randomize = self.randomization_settings.get("randomize", False)
+        self.randomization_settings = self.randomization_settings.get(
+            "randomization_params", {}
+        )
+
+        if self.randomize:
+            self.domain_randomization(randomization_params=self.randomization_settings)
 
         self.frame_idx = 0
 
@@ -168,57 +176,100 @@ class GenericEnv(BaseEnv):
             (imu_data.lin_acc_b, imu_data.ang_vel_b, imu_data.quat_w), dim=1
         )
 
-        from omni.isaac.sensor import _sensor
+        # from omni.isaac.sensor import _sensor
 
-        i_imu = _sensor.acquire_imu_sensor_interface()
+        # i_imu = _sensor.acquire_imu_sensor_interface()
 
-        imus_frame = torch.zeros(self.num_envs, 10)
+        # imus_frame = torch.zeros(self.num_envs, 10)
 
-        for i, imu_path in enumerate(self.agent_imu_paths):
-            imu_data = i_imu.get_sensor_reading(imu_path)
-            imus_frame[i, :] = torch.tensor(
-                [
-                    imu_data.lin_acc_x,
-                    imu_data.lin_acc_y,
-                    imu_data.lin_acc_z,
-                    imu_data.ang_vel_x,
-                    imu_data.ang_vel_y,
-                    imu_data.ang_vel_z,
-                    # the quaternion is stored in WXYZ format in rest of Isaac
-                    imu_data.orientation[3],
-                    imu_data.orientation[0],
-                    imu_data.orientation[1],
-                    imu_data.orientation[2],
-                ],
-            )
+        # for i, imu_path in enumerate(self.agent_imu_paths):
+        #     imu_data = i_imu.get_sensor_reading(imu_path)
+        #     imus_frame[i, :] = torch.tensor(
+        #         [
+        #             imu_data.lin_acc_x,
+        #             imu_data.lin_acc_y,
+        #             imu_data.lin_acc_z,
+        #             imu_data.ang_vel_x,
+        #             imu_data.ang_vel_y,
+        #             imu_data.ang_vel_z,
+        #             # the quaternion is stored in WXYZ format in rest of Isaac
+        #             imu_data.orientation[3],
+        #             imu_data.orientation[0],
+        #             imu_data.orientation[1],
+        #             imu_data.orientation[2],
+        #         ],
+        #     )
 
-        return imus_frame
+        # return imus_frame
 
-    def domain_randomization(self) -> None:
+    def domain_randomization(self, randomization_params) -> None:
+        if not randomization_params:
+            print("No domain randomization parameters provided.")
+            return
+
+        self.frequency = randomization_params["frequency"]
+        self.domain_params = randomization_params["twip"]
+
+        self.articulation_view_properties = self.domain_params[
+            "articulation_view_properties"
+        ]
+
+        self.properties_by_operation = {}
+        for prop in self.articulation_view_properties:
+            operation = self.articulation_view_properties[prop]["operation"]
+            if operation not in self.properties_by_operation:
+                self.properties_by_operation[operation] = []
+            self.properties_by_operation[operation].append(prop)
+
+        args = self.map_config_to_function_args(self.articulation_view_properties)
+
         import omni.replicator.isaac as dr
         import omni.replicator.core as rep
 
         self.dr = dr
+        self.rep = rep
+        self.num_dof = self.twip_art_view.num_dof
 
         # domain randomization
         self.dr.physics_view.register_simulation_context(self.world)
         self.dr.physics_view.register_articulation_view(self.twip_art_view)
 
         with self.dr.trigger.on_rl_frame(num_envs=self.num_envs):
-            with self.dr.gate.on_interval(interval=100):
-                self.dr.physics_view.randomize_articulation_view(
-                    view_name=self.twip_art_view.name,
-                    operation="scaling",
-                    damping=rep.distribution.uniform(0.5, 2.0),
-                    stiffness=rep.distribution.uniform(0.5, 2.0),
-                )
+            with self.dr.gate.on_interval(interval=self.frequency):
+                for property in self.articulation_view_properties:
+                    dr.physics_view.randomize_articulation_view(
+                        view_name=self.twip_art_view.name,
+                        **args,
+                    )
 
         rep.orchestrator.run()
         self.frame_idx = 0
 
     def step_randomization(self) -> None:
-        reset_inds = list()
         if self.frame_idx % 200 == 0:
             # triggers reset every 200 steps
             reset_inds = np.arange(self.num_envs)
-        self.dr.physics_view.step_randomization(reset_inds)
+            self.dr.physics_view.step_randomization(reset_inds)
+
+    def map_config_to_function_args(self, config):
+        args = {}
+
+        for prop in config:
+            prop_range = self.get_randomization_range(config[prop]["range"])
+            args[prop] = self.rep.distribution.normal(
+                tuple(prop_range[0]), tuple(prop_range[1])
+            )
+        return args
+
+    def get_randomization_range(self, prop_range):
+        from_x = []
+        to_y = []
+        if isinstance(prop_range[0], list):
+            for item in prop_range:
+                from_x.append(item[0])
+                to_y.append(item[1])
+        else:
+            from_x = [prop_range[0]]
+            to_y = [prop_range[1]]
+
+        return from_x, to_y
