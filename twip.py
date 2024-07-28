@@ -53,6 +53,12 @@ def setup_argparser() -> argparse.ArgumentParser:
         default="configs/world.yaml",
     )
     parser.add_argument(
+        "--randomization-config",
+        type=str,
+        help="Enable domain randomization.",
+        default="configs/randomization.yaml",
+    )
+    parser.add_argument(
         "--checkpoint",
         type=str,
         help="Path to the checkpoint to load for RL.",
@@ -76,12 +82,7 @@ def setup_argparser() -> argparse.ArgumentParser:
         help="Exports checkpoint as ONNX model.",
         default=False,
     )
-    parser.add_argument(
-        "--domain-randomization",
-        action="store_true",
-        help="Enable domain randomization.",
-        default=False,
-    )
+
     return parser
 
 
@@ -91,6 +92,7 @@ if __name__ == "__main__":
     cli_args = parser.parse_args()
     rl_config = load_config(cli_args.rl_config)
     world_config = load_config(cli_args.world_config)
+    randomization_config = load_config(cli_args.randomization_config)
 
     # override config with CLI args & vice versa
     if cli_args.num_envs == -1:
@@ -121,6 +123,7 @@ if __name__ == "__main__":
         env = GenericEnv(
             world_settings=world_config,
             num_envs=cli_args.num_envs,
+            randomization_settings=randomization_config,
         )
 
         twip = TwipAgent(twip_settings)
@@ -128,40 +131,9 @@ if __name__ == "__main__":
         env.construct(twip)
         env.reset()
 
-        world = env.world
-        num_envs = env.num_envs
-        twip_view = env.twip_art_view
-        num_dof = twip_view.num_dof
-
-        # set up randomization with omni.replicator.isaac, imported as dr
-        import omni.replicator.isaac as dr
-        import omni.replicator.core as rep
-
-        dr.physics_view.register_simulation_context(world)
-        dr.physics_view.register_articulation_view(twip_view)
-
-        with dr.trigger.on_rl_frame(num_envs=num_envs):
-            with dr.gate.on_interval(interval=100):
-                dr.physics_view.randomize_articulation_view(
-                    view_name=twip_view.name,
-                    operation="direct",
-                    joint_efforts=rep.distribution.uniform(
-                        tuple([-10] * num_dof), tuple([10] * num_dof)
-                    ),
-                )
-
-        rep.orchestrator.run()
-
-        frame_idx = 0
         while sim_app.is_running():
-            if world.is_playing():
-                reset_inds = list()
-                if frame_idx % 200 == 0:
-                    # triggers reset every 200 steps
-                    reset_inds = np.arange(num_envs)
-                dr.physics_view.step_randomization(reset_inds)
-                env.step(torch.zeros(num_envs, 2), render=cli_args.headless)
-                frame_idx += 1
+            if env.world.is_playing():
+                env.step(render=cli_args.headless)
 
     # ----------- #
     # RL TRAINING #
@@ -173,7 +145,7 @@ if __name__ == "__main__":
         return GenericEnv(
             world_settings=world_config,
             num_envs=cli_args.num_envs,
-            domain_rand=cli_args.domain_randomization,
+            randomization_settings=randomization_config,
         )
 
     def twip_agent_factory() -> TwipAgent:
