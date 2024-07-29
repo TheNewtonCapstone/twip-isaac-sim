@@ -8,6 +8,17 @@ domain_randomization = config["randomization_params"]["twip"][
     "articulation_view_properties"
 ]
 
+print(domain_randomization)
+
+properties_by_operation = {}
+
+for prop in domain_randomization:
+    operation = domain_randomization[prop]["operation"]
+    if operation not in properties_by_operation:
+        properties_by_operation[operation] = []
+    properties_by_operation[operation].append(prop)
+
+print(properties_by_operation)
 args = {}
 
 for prop in domain_randomization:
@@ -25,6 +36,6 @@ for prop in domain_randomization:
 
     args[prop] = (tuple(from_x), tuple(to_y))
 
-print(args)
+# print(args)
 
 # rep.distribution.normal((0.0, 0.0, 0.0), (0.2, 0.2, 0.0))

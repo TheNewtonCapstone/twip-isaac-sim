@@ -7,6 +7,8 @@ from core.sensors.imu.imu import IMU
 from core.twip.twip_agent import TwipAgent
 
 
+
+
 # TODO: should be called GenericTwipEnv
 class GenericEnv(BaseEnv):
     def __init__(self, world_settings, num_envs, randomization_settings):
@@ -91,8 +93,10 @@ class GenericEnv(BaseEnv):
             self.world.app.update()
 
         # domain randomization
-        if self.domain_rand:
+        if self.randomize:
             self.step_randomization()
+
+        # print(self.twip_art_view.get_joint_velocities())
 
         self.world.step(render=render)
 
@@ -176,32 +180,6 @@ class GenericEnv(BaseEnv):
             (imu_data.lin_acc_b, imu_data.ang_vel_b, imu_data.quat_w), dim=1
         )
 
-        # from omni.isaac.sensor import _sensor
-
-        # i_imu = _sensor.acquire_imu_sensor_interface()
-
-        # imus_frame = torch.zeros(self.num_envs, 10)
-
-        # for i, imu_path in enumerate(self.agent_imu_paths):
-        #     imu_data = i_imu.get_sensor_reading(imu_path)
-        #     imus_frame[i, :] = torch.tensor(
-        #         [
-        #             imu_data.lin_acc_x,
-        #             imu_data.lin_acc_y,
-        #             imu_data.lin_acc_z,
-        #             imu_data.ang_vel_x,
-        #             imu_data.ang_vel_y,
-        #             imu_data.ang_vel_z,
-        #             # the quaternion is stored in WXYZ format in rest of Isaac
-        #             imu_data.orientation[3],
-        #             imu_data.orientation[0],
-        #             imu_data.orientation[1],
-        #             imu_data.orientation[2],
-        #         ],
-        #     )
-
-        # return imus_frame
-
     def domain_randomization(self, randomization_params) -> None:
         if not randomization_params:
             print("No domain randomization parameters provided.")
@@ -210,19 +188,6 @@ class GenericEnv(BaseEnv):
         self.frequency = randomization_params["frequency"]
         self.domain_params = randomization_params["twip"]
 
-        self.articulation_view_properties = self.domain_params[
-            "articulation_view_properties"
-        ]
-
-        self.properties_by_operation = {}
-        for prop in self.articulation_view_properties:
-            operation = self.articulation_view_properties[prop]["operation"]
-            if operation not in self.properties_by_operation:
-                self.properties_by_operation[operation] = []
-            self.properties_by_operation[operation].append(prop)
-
-        args = self.map_config_to_function_args(self.articulation_view_properties)
-
         import omni.replicator.isaac as dr
         import omni.replicator.core as rep
 
@@ -230,35 +195,68 @@ class GenericEnv(BaseEnv):
         self.rep = rep
         self.num_dof = self.twip_art_view.num_dof
 
+        args = self.map_config_to_function_args(self.domain_params, rep)
+
         # domain randomization
         self.dr.physics_view.register_simulation_context(self.world)
         self.dr.physics_view.register_articulation_view(self.twip_art_view)
 
         with self.dr.trigger.on_rl_frame(num_envs=self.num_envs):
-            with self.dr.gate.on_interval(interval=self.frequency):
-                for property in self.articulation_view_properties:
-                    dr.physics_view.randomize_articulation_view(
-                        view_name=self.twip_art_view.name,
-                        **args,
-                    )
+            with self.dr.gate.on_interval(interval=self.frequency):      
+                dr.physics_view.randomize_articulation_view(
+                    view_name=self.twip_art_view.name,
+                    operation="direct",
+                    **args,
+                )
+            with self.dr.gate.on_env_reset():
+                dr.physics_view.randomize_articulation_view(
+                    view_name=self.twip_art_view.name,
+                    operation="additive",
+                    **args,
+                )
 
         rep.orchestrator.run()
         self.frame_idx = 0
 
     def step_randomization(self) -> None:
+        reset_inds = []
         if self.frame_idx % 200 == 0:
             # triggers reset every 200 steps
             reset_inds = np.arange(self.num_envs)
             self.dr.physics_view.step_randomization(reset_inds)
 
-    def map_config_to_function_args(self, config):
+    def map_config_to_function_args(self, config, rep):
+        
         args = {}
 
-        for prop in config:
-            prop_range = self.get_randomization_range(config[prop]["range"])
-            args[prop] = self.rep.distribution.normal(
+        if "articulation_view_properties" not in config and "dof_properties" not in config:
+            raise ValueError("Invalid randomization config: missing properties")
+        
+        self.articulation_view_properties = config["articulation_view_properties"]
+        self.dof_properties = config["dof_properties"]
+
+
+        for prop in self.articulation_view_properties:
+            prop_range = self.get_randomization_range(self.articulation_view_properties[prop]["range"])
+
+            print(prop)
+            print(tuple(prop_range[0]))
+            print(tuple(prop_range[1]))
+            
+            args[prop] = rep.distribution.normal(
                 tuple(prop_range[0]), tuple(prop_range[1])
             )
+
+        for prop in self.dof_properties:
+            prop_range = self.get_randomization_range(self.dof_properties[prop]["range"])
+
+            print([prop_range[0]] * self.num_dof)
+            print([prop_range[1]] * self.num_dof)
+            
+            args[prop] = rep.distribution.uniform(
+                tuple([prop_range[0]] * self.num_dof), tuple([prop_range[1]] * self.num_dof)
+            )
+
         return args
 
     def get_randomization_range(self, prop_range):

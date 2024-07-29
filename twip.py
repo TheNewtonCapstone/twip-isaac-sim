@@ -133,7 +133,7 @@ if __name__ == "__main__":
 
         while sim_app.is_running():
             if env.world.is_playing():
-                env.step(render=cli_args.headless)
+                env.step(torch.zeros(env.num_envs, 2), render=cli_args.headless)
 
     # ----------- #
     # RL TRAINING #

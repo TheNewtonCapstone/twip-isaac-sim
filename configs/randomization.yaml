@@ -4,50 +4,45 @@ randomization_params:
   color: True
   twip:
     articulation_view_properties:
-      mass:
-        range: [0.8, 1.2]
-        operation: "scaling"
-        distribution: "uniform"
-        setup_only: False
+      # mass:
+      #   range: [0.8, 1.2]
+      #   operation: "scaling"
+      #   distribution: "uniform"
+      #   setup_only: False
       position:
-        range: [[-0.2, 0.2], [-0.2, 0.2], [0, 0]]
+        range: [[0.0, 0.2], [0, 0.2], [0, 0]]
         operation: "additive"
         distribution: "uniform"
         setup_only: False
-      orientation:
-        range: [[-0.35, 0.35], [-0.35, 0.35], [-0.35, 0.35]]
-        operation: "direct"
-        distribution: "uniform"
-        setup_only: False
-      velocity:
-        range: [[-0.1, 0.1], [-0.1, 0.1], [-0.1, 0.1], [-0.05, 0.05], [-0.05, 0.05], [-0.05, 0.05]]
-        operation: "additive"
-        distribution: "uniform"
-        setup_only: False
+      # orientation:
+      #   range: [[-0.35, 0.35], [-0.35, 0.35], [-0.35, 0.35]]
+      #   operation: "direct"
+      #   distribution: "uniform"
+      #   setup_only: False
+      # velocity:
+      #   range: [[-0.1, 0.1], [-0.1, 0.1], [-0.1, 0.1], [-0.05, 0.05], [-0.05, 0.05], [-0.05, 0.05]]
+      #   operation: "additive"
+      #   distribution: "uniform"
+      #   setup_only: False
 
     dof_properties:
-      stiffness:
-        range: [0.5, 1.5]
-        operation: "scaling"
-        distribution: "uniform"
-        setup_only: False
-      damping:
-        range: [0.5, 1.2]
-        operation: "scaling"
-        distribution: "uniform"
-        setup_only: False
-      # armature:
-      #   range: [0., 0.01]
-      #   operation: "additive"
+      # stiffness:
+      #   range: [0.5, 1.5]
+      #   operation: "scaling"
       #   distribution: "uniform"
       #   setup_only: False
-      friction:
-        range: [0.5, 1.5]
-        operation: "scaling"
-        distribution: "uniform"
-        setup_only: False
-      # joint_velocities:
-      #   range: [[-0.1, 0.1]] * num_dof  # Replace num_dof with the actual number of degrees of freedom
-      #   operation: "additive"
+      # damping:
+      #   range: [0.5, 1.2]
+      #   operation: "scaling"
       #   distribution: "uniform"
       #   setup_only: False
+      # friction:
+      #   range: [0.5, 1.5]
+      #   operation: "scaling"
+      #   distribution: "uniform"
+      #   setup_only: False
+      joint_velocities:
+        range: [-10, 10]  # Replace num_dof with the actual number of degrees of freedom
+        operation: "additive"
+        distribution: "uniform"
+        setup_only: False
