@@ -2,7 +2,7 @@
 This repo contains the code and configuration used during our journey of developing TWIP using NVIDIA's Isaac Sim and rl games.
 
 ## Requirements
-- Debian based Linux ()
+- Ubutun 22.04 LTS (Works with pop_os as well)
 - Nvidia GPU with 470+ drivers (`nvidia-smi` to make sure these are set up)
 - Isaac Sim (tested with version `4.0.0`)
 - RL games
