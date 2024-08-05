@@ -7,8 +7,6 @@ from core.sensors.imu.imu import IMU
 from core.twip.twip_agent import TwipAgent
 
 
-
-
 # TODO: should be called GenericTwipEnv
 class GenericEnv(BaseEnv):
     def __init__(self, world_settings, num_envs, randomization_settings):
@@ -195,6 +193,8 @@ class GenericEnv(BaseEnv):
         self.rep = rep
         self.num_dof = self.twip_art_view.num_dof
 
+        print("Number of DOF: ", self.num_dof)
+
         args = self.map_config_to_function_args(self.domain_params, rep)
 
         # domain randomization
@@ -202,16 +202,19 @@ class GenericEnv(BaseEnv):
         self.dr.physics_view.register_articulation_view(self.twip_art_view)
 
         with self.dr.trigger.on_rl_frame(num_envs=self.num_envs):
-            with self.dr.gate.on_interval(interval=self.frequency):      
-                dr.physics_view.randomize_articulation_view(
+            # with self.dr.gate.on_interval(interval=self.frequency):
+            #     self.dr.physics_view.randomize_articulation_view(
+            #         view_name=self.twip_art_view.name,
+            #         operation="direct",
+            #         joint_efforts=rep.distribution.uniform(
+            #             tuple([-10] * self.num_dof), tuple([10] * self.num_dof)
+            #         ),
+            #     )
+
+            with self.dr.gate.on_env_reset():
+                self.dr.physics_view.randomize_articulation_view(
                     view_name=self.twip_art_view.name,
                     operation="direct",
-                    **args,
-                )
-            with self.dr.gate.on_env_reset():
-                dr.physics_view.randomize_articulation_view(
-                    view_name=self.twip_art_view.name,
-                    operation="additive",
                     **args,
                 )
 
@@ -223,38 +226,45 @@ class GenericEnv(BaseEnv):
         if self.frame_idx % 200 == 0:
             # triggers reset every 200 steps
             reset_inds = np.arange(self.num_envs)
-            self.dr.physics_view.step_randomization(reset_inds)
+        self.dr.physics_view.step_randomization(reset_inds)
 
     def map_config_to_function_args(self, config, rep):
-        
+
         args = {}
 
-        if "articulation_view_properties" not in config and "dof_properties" not in config:
+        if (
+            "articulation_view_properties" not in config
+            and "dof_properties" not in config
+        ):
             raise ValueError("Invalid randomization config: missing properties")
-        
+
         self.articulation_view_properties = config["articulation_view_properties"]
         self.dof_properties = config["dof_properties"]
 
-
         for prop in self.articulation_view_properties:
-            prop_range = self.get_randomization_range(self.articulation_view_properties[prop]["range"])
+            prop_range = self.get_randomization_range(
+                self.articulation_view_properties[prop]["range"]
+            )
 
             print(prop)
             print(tuple(prop_range[0]))
             print(tuple(prop_range[1]))
-            
+
             args[prop] = rep.distribution.normal(
                 tuple(prop_range[0]), tuple(prop_range[1])
             )
 
         for prop in self.dof_properties:
-            prop_range = self.get_randomization_range(self.dof_properties[prop]["range"])
+            prop_range = self.get_randomization_range(
+                self.dof_properties[prop]["range"]
+            )
 
-            print([prop_range[0]] * self.num_dof)
-            print([prop_range[1]] * self.num_dof)
-            
+            print(tuple([prop_range[0]] * self.num_dof))
+            print(tuple([prop_range[1]] * self.num_dof))
+
             args[prop] = rep.distribution.uniform(
-                tuple([prop_range[0]] * self.num_dof), tuple([prop_range[1]] * self.num_dof)
+                tuple([prop_range[0]] * self.num_dof),
+                tuple([prop_range[1]] * self.num_dof),
             )
 
         return args
