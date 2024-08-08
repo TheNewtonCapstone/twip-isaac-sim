@@ -183,40 +183,50 @@ class GenericEnv(BaseEnv):
             print("No domain randomization parameters provided.")
             return
 
-        self.frequency = randomization_params["frequency"]
-        self.domain_params = randomization_params["twip"]
-
         import omni.replicator.isaac as dr
         import omni.replicator.core as rep
 
         self.dr = dr
         self.rep = rep
         self.num_dof = self.twip_art_view.num_dof
+        self.frequency = randomization_params["frequency"]
+        self.domain_params = randomization_params["twip"]
 
         print("Number of DOF: ", self.num_dof)
 
-        args = self.map_config_to_function_args(self.domain_params, rep)
+        args = self.format_randomization_params(self.domain_params, self.rep)
+        print("args: ", args)
+        self.on_interval_properties = args.get("on_interval", {})
+        self.on_reset_properties = args.get("on_reset", {})
 
         # domain randomization
         self.dr.physics_view.register_simulation_context(self.world)
         self.dr.physics_view.register_articulation_view(self.twip_art_view)
 
         with self.dr.trigger.on_rl_frame(num_envs=self.num_envs):
+            print("Randomizing simulation context")
             # with self.dr.gate.on_interval(interval=self.frequency):
-            #     self.dr.physics_view.randomize_articulation_view(
-            #         view_name=self.twip_art_view.name,
-            #         operation="direct",
-            #         joint_efforts=rep.distribution.uniform(
-            #             tuple([-10] * self.num_dof), tuple([10] * self.num_dof)
-            #         ),
-            #     )
 
             with self.dr.gate.on_env_reset():
-                self.dr.physics_view.randomize_articulation_view(
-                    view_name=self.twip_art_view.name,
-                    operation="direct",
-                    **args,
-                )
+                print("Randomizing on reset")
+                print(self.on_interval_properties)
+                for body in self.on_interval_properties:
+                    if "articulation_view_properties" in body:
+                        
+                        for prop in self.on_interval_properties[body]:
+                            
+                            body_properties = self.on_interval_properties.get(body, {})
+                            args = body_properties.get(prop, {})
+                            
+                            print("body_properties: ", body_properties)
+                            print("args: ", args)
+                            
+                            self.dr.physics_view.randomize_articulation_view(
+                                view_name=self.twip_art_view.name,
+                                operation=str(prop),
+                                **args,
+                            )
+
 
         rep.orchestrator.run()
         self.frame_idx = 0
@@ -227,47 +237,48 @@ class GenericEnv(BaseEnv):
             # triggers reset every 200 steps
             reset_inds = np.arange(self.num_envs)
         self.dr.physics_view.step_randomization(reset_inds)
+    
+    def format_randomization_params(self, twip_params, rep):
+    
+        def process_property(distribution, range_values):
+            range_str = self.get_randomization_range(range_values)
+            if distribution == "uniform":
+                return rep.distribution.uniform(tuple(range_str[0]), tuple(range_str[1]))
+            elif distribution == "normal":
+                return rep.distribution.normal(tuple(range_str[0]), tuple(range_str[1]))
+            else:
+                raise ValueError(f"Invalid distribution type: {distribution}")
 
-    def map_config_to_function_args(self, config, rep):
+        def format_properties(properties):
+            return {
+                prop: process_property(
+                    prop_data.get('distribution', 'uniform'),
+                    prop_data.get('range', [])
+                ) for prop, prop_data in properties.items()
+            }
 
-        args = {}
+        formatted_params = {}
 
-        if (
-            "articulation_view_properties" not in config
-            and "dof_properties" not in config
-        ):
-            raise ValueError("Invalid randomization config: missing properties")
+        # Extract relevant sections from twip_params
+        print("twip_params: ", twip_params)
+        for gate_type in twip_params:
+            
+            gate_type_config = twip_params.get(gate_type, {})
+            print("gate_type_config: ", gate_type_config)
+            formatted_params[gate_type] = {}
 
-        self.articulation_view_properties = config["articulation_view_properties"]
-        self.dof_properties = config["dof_properties"]
+            for property_type in ["articulation_view_properties", "dof_properties", "rigid_body_properties"]:
+                property_config = gate_type_config.get(property_type, {})
+                
+                # Format properties for each type
+                
+                formatted_params[gate_type][property_type] = {
+                    'additive': format_properties(property_config.get('additive', {})),
+                    'scaling': format_properties(property_config.get('scaling', {})),
+                    'direct': format_properties(property_config.get('direct', {}))
+                }
 
-        for prop in self.articulation_view_properties:
-            prop_range = self.get_randomization_range(
-                self.articulation_view_properties[prop]["range"]
-            )
-
-            print(prop)
-            print(tuple(prop_range[0]))
-            print(tuple(prop_range[1]))
-
-            args[prop] = rep.distribution.normal(
-                tuple(prop_range[0]), tuple(prop_range[1])
-            )
-
-        for prop in self.dof_properties:
-            prop_range = self.get_randomization_range(
-                self.dof_properties[prop]["range"]
-            )
-
-            print(tuple([prop_range[0]] * self.num_dof))
-            print(tuple([prop_range[1]] * self.num_dof))
-
-            args[prop] = rep.distribution.uniform(
-                tuple([prop_range[0]] * self.num_dof),
-                tuple([prop_range[1]] * self.num_dof),
-            )
-
-        return args
+        return formatted_params
 
     def get_randomization_range(self, prop_range):
         from_x = []
