@@ -1,48 +1,38 @@
-randomize: False
+randomize: True
 randomization_params:
   frequency: 200   # Define how many environment steps between generating new randomizations
   color: True
-  twip:
-    articulation_view_properties:
-      # body_masses:
-      #   range: [0.8, 1.2]
-      #   operation: "scaling"
-      #   distribution: "uniform"
-      #   setup_only: False
-      position:
-        range: [[0.0, 0.2], [0, 0.2], [0, 0]]
-        operation: "additive"
-        distribution: "uniform"
-        setup_only: False
-      orientation:
-        range: [[-0.05, 0.05], [-0.05, 0.05], [-0.05, 0.05]]
-        operation: "direct"
-        distribution: "uniform"
-        setup_only: False
-      velocity:
-        range: [[-0.1, 0.1], [-0.1, 0.1], [-0.1, 0.1], [-0.05, 0.05], [-0.05, 0.05], [-0.05, 0.05]]
-        operation: "additive"
-        distribution: "uniform"
-        setup_only: False
 
-    dof_properties:
-      # stiffness:
-      #   range: [0.5, 1.5]
-      #   operation: "scaling"
-      #   distribution: "uniform"
-      #   setup_only: False
-      # damping:
-      #   range: [0.5, 1.2]
-      #   operation: "scaling"
-      #   distribution: "uniform"
-      #   setup_only: False
-      # friction:
-      #   range: [0.5, 1.5]
-      #   operation: "scaling"
-      #   distribution: "uniform"
-      #   setup_only: False
-      joint_efforts:
-        range: [-1 z0, 10]  # Replace num_dof with the actual number of degrees of freedom
-        operation: "additive"
-        distribution: "uniform"
-        setup_only: False
+  # The following parameters are used to randomize the environment
+  # The values will by grouped by "on interval" or "on reset" then by the type of object they are applied to, then by the operation type.
+  twip:
+    on_interval:
+      articulation_view_properties:
+        additive:
+          position:
+            range: [[-0.1, 0.1], [-0.1, 0.1], [-0.1, 0.1]]
+            distribution: "uniform"
+            setup_only: False
+
+          orientation:
+            range: [[-0.05, 0.05], [-0.05, 0.05], [-0.05, 0.05]]
+            distribution: "uniform"
+            setup_only: False
+
+          velocity:
+            range: [[-0.1, 0.1], [-0.1, 0.1], [-0.1, 0.1], [-0.05, 0.05], [-0.05, 0.05], [-0.05, 0.05]]
+            distribution: "uniform"
+            setup_only: False
+
+        scaling:
+          body_masses:
+            range: [0.8, 1.2]
+            distribution: "uniform"
+            setup_only: False
+
+    # on_reset:
+      # articulation_view_properties:
+        #   additive:
+        #   direct:
+        #   scaling:
+
