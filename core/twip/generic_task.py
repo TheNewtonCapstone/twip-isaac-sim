@@ -6,6 +6,7 @@ from typing import Dict, Any, Tuple, Callable
 from core.base.base_task import BaseTask
 from core.base.base_env import BaseEnv
 from core.base.base_agent import BaseAgent
+from core.terrain.perlin_terrain import PerlinTerrainBuilder
 
 
 # should be called BalancingTwipTask
@@ -78,7 +79,7 @@ class GenericTask(BaseTask):
         self.env = self.env_factory()
         self.agent = self.agent_factory()
 
-        self.env.construct(self.agent)
+        self.env.construct(self.agent, PerlinTerrainBuilder())
 
         return True
 

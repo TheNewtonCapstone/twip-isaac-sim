@@ -9,22 +9,14 @@ class FlatTerrainBuild(TerrainBuild):
         size: list[int],
         position: list[int],
         rotation: list[int],
-        scale: list[int],
+        detail: list[int],
+        height: float,
     ):
-        super().__init__(container, size, position, rotation, scale)
+        super().__init__(container, size, position, rotation, detail)
 
 
+# detail does not affect the flat terrain, the number of vertices is determined by the size
 class FlatTerrainBuilder(TerrainBuilder):
-    def __init__(
-        self,
-        size: list[int] = [2, 2],
-        position: list[int] = [0, 0, 0],
-        rotation: list[int] = [0, 0, 0],
-        scale: list[int] = [1, 1, 1],
-        randomize: bool = False,
-    ):
-        super().__init__(size, position, rotation, scale, randomize)
-
     def build(self, stage):
         import omni.isaac.core
         from omni.isaac.core.utils.stage import get_current_stage
@@ -34,7 +26,11 @@ class FlatTerrainBuilder(TerrainBuilder):
 
         heightmap = torch.zeros(self.size)
 
-        vertices, triangles = self._heightmap_to_mesh(heightmap)
+        vertices, triangles = self._heightmap_to_mesh(
+            heightmap,
+            num_cols=self.size[0],
+            num_rows=self.size[1],
+        )
         self._add_mesh_to_world(stage, vertices, triangles)
 
         return FlatTerrainBuild(
@@ -42,5 +38,5 @@ class FlatTerrainBuilder(TerrainBuilder):
             self.size,
             self.position,
             self.rotation,
-            self.scale,
+            self.detail,
         )

@@ -1,5 +1,6 @@
 from datetime import datetime
 import os
+from core.terrain.perlin_terrain import PerlinTerrainBuilder
 import torch
 
 import argparse
@@ -122,7 +123,7 @@ if __name__ == "__main__":
         )
         twip = TwipAgent(twip_settings)
 
-        env.construct(twip, FlatTerrainBuilder())
+        env.construct(twip, PerlinTerrainBuilder())
         env.reset()
 
         world = env.world
@@ -172,6 +173,12 @@ if __name__ == "__main__":
             num_envs=cli_args.num_envs,
         )
 
+    def procedural_env_factory() -> GenericEnv:
+        return ProceduralEnv(
+            world_settings=world_config,
+            num_envs=cli_args.num_envs,
+        )
+
     def twip_agent_factory() -> TwipAgent:
         return TwipAgent(twip_settings)
 
@@ -182,7 +189,7 @@ if __name__ == "__main__":
     )
 
     task_architect = base_task_architect(
-        generic_env_factory,
+        procedural_env_factory,
         twip_agent_factory,
         GenericTask,
     )

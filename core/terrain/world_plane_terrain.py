@@ -8,15 +8,13 @@ class DefaultGroundPlaneBuild(TerrainBuild):
         size: list[int],
         position: list[int],
         rotation: list[int],
-        scale: list[int],
+        detail: list[int],
+        height,
     ):
-        super().__init__(container, size, position, rotation, scale)
+        super().__init__(container, size, position, rotation, detail, height)
 
 
 class DefaultGroundPlaneBuilder(TerrainBuilder):
-    def __init__(self):
-        super().__init__()
-
     def build(self, container):
         import omni.isaac.core
         from omni.isaac.core import World
@@ -30,5 +28,5 @@ class DefaultGroundPlaneBuilder(TerrainBuilder):
             container,
             self.position,
             self.rotation,
-            self.scale,
+            self.detail,
         )
