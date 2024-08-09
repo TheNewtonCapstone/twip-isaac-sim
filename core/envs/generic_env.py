@@ -53,6 +53,7 @@ class GenericEnv(BaseEnv):
             prim_paths_expr="/World/envs/e.*/twip/body",
             name="twip_art_view",
         )
+
         self.world.scene.add(self.twip_art_view)
 
         self.world.reset()

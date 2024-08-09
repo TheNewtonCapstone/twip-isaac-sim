@@ -17,6 +17,7 @@ class DomainRandomizer:
 
         self.num_dof = self.twip_art_view.num_dof
         self.rigid_body_names = self.twip_art_view.body_names
+        print("rigid_body_names: ", self.rigid_body_names)
 
         self.on_interval_properties = {}
         self.on_reset_properties = {}
@@ -94,6 +95,7 @@ class DomainRandomizer:
                                 operation=str(prop),
                                 **args,
                             )
+
 
     def step_randomization(self):
         reset_inds = []
