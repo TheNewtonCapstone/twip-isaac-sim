@@ -128,7 +128,7 @@ class GenericTask(BaseTask):
         env_info["episode"] = episode_info
 
         # process failures (when falling)
-        self.dones_buf = torch.where(torch.abs(twip_roll) > 0.26, True, False)
+        self.dones_buf = torch.where(torch.abs(twip_roll) > 0.3, True, False)
         self.dones_buf = torch.where(
             self.progress_buf >= self.max_episode_length - 1, True, self.dones_buf
         )
@@ -187,7 +187,7 @@ def compute_rewards_twip(
     rewards = 1.0 - roll_rew - ang_vel_z_rew - combined_dof_vel_rew
 
     # penalize for falling
-    rewards += torch.where(torch.abs(roll) > 0.26, -2.0, rewards)
+    rewards += torch.where(torch.abs(roll) > 0.3, -2.0, rewards)
 
     episode = {
         "roll": torch.median(torch.abs(roll)),
