@@ -1,11 +1,13 @@
 import torch
 import numpy as np
 
+
 class DomainRandomizer:
     def __init__(self, world, num_envs, twip_art_view, randomization_params):
 
         import omni.replicator.isaac as dr
         import omni.replicator.core as rep
+
         self.dr = dr
         self.rep = rep
 
@@ -24,7 +26,6 @@ class DomainRandomizer:
         self.on_reset_properties = {}
 
         self.format_randomization_params()
-
 
         self.frame_idx = 0
 
@@ -70,7 +71,11 @@ class DomainRandomizer:
             gate_type_config = self.domain_params.get(gate_type, {})
             formatted_params[gate_type] = {}
 
-            for property_type in ["articulation_view_properties", "dof_properties", "rigid_body_properties"]:
+            for property_type in [
+                "articulation_view_properties",
+                "dof_properties",
+                "rigid_body_properties",
+            ]:
                 property_config = gate_type_config.get(property_type, {})
 
                 formatted_params[gate_type][property_type] = {

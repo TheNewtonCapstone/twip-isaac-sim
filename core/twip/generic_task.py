@@ -191,7 +191,7 @@ def compute_rewards_twip(
     # Penalties
     roll_penalty = torch.tanh(3 * torch.abs(roll))
     ang_vel_penalty = torch.tanh(2 * torch.abs(ang_vel_z))
-    # action_penalty = torch.tanh(torch.sum(torch.abs(actions), dim=-1)) * 0.1
+    action_penalty = torch.tanh(torch.sum(torch.abs(actions), dim=-1)) * 0.1
     # position_penalty = torch.tanh(norm_position) * 0.2
     roll_velocity_penalty = torch.tanh(2 * torch.abs(roll_velocity)) * 0.3
 
@@ -200,7 +200,7 @@ def compute_rewards_twip(
         upright_reward
         - roll_penalty
         - ang_vel_penalty
-        # - action_penalty
+        - action_penalty
         # - position_penalty
         - roll_velocity_penalty
     )
@@ -220,7 +220,7 @@ def compute_rewards_twip(
         "ang_vel_z": torch.median(torch.abs(ang_vel_z)),
         "ang_vel_penalty": torch.mean(ang_vel_penalty),
         "action_magnitude": torch.median(torch.sum(torch.abs(actions), dim=-1)),
-        # "action_penalty": torch.mean(action_penalty),
+        "action_penalty": torch.mean(action_penalty),
         # "position": torch.median(norm_position),
         # "position_penalty": torch.mean(position_penalty),
         "roll_velocity": torch.median(torch.abs(roll_velocity)),
