@@ -8,42 +8,42 @@ randomization_params:
   twip:
     on_interval:
       articulation_view_properties:
-        additive:
-          # position:
-          #   range: [[-0.1, 0.1], [-0.1, 0.1], [-0.1, 0.1]]
-          #   distribution: "uniform"
-          #   setup_only: False
+        # additive:
+        #   position:
+        #     range: [[-0.1, 0.1], [-0.1, 0.1], [-0.1, 0.1]]
+        #     distribution: "uniform"
+        #     setup_only: False
 
-          # orientation:
-          #   range: [[-0.05, 0.05], [-0.05, 0.05], [-0.05, 0.05]]
-          #   distribution: "uniform"
-          #   setup_only: False
+        #   orientation:
+        #     range: [[-0.05, 0.05], [-0.05, 0.05], [-0.05, 0.05]]
+        #     distribution: "uniform"
+        #     setup_only: False
 
-          velocity:
-            # Range - [x, y, z, roll, pitch, yaw]
-            range: [[-0.1, 0.1], [-0.1, 0.1], [-0.1, 0.1], [-1, 1], [-2, 2], [-2, 2]]
-            distribution: "uniform"
-            setup_only: False
+        #   velocity:
+        #     # Range - [x, y, z, roll, pitch, yaw]
+        #     range: [[-0.1, 0.1], [-0.1, 0.1], [-0.1, 0.1], [-1, 1], [-2, 2], [-2, 2]]
+        #     distribution: "uniform"
+        #     setup_only: False
 
         scaling:
           body_masses:
-            range: [0.8, 1.2]
+            range: [0.9, 1.1]
             distribution: "uniform"
             setup_only: False
 
-      rigid_body_properties:
-        direct:
-          force:
-            range: [[-0.2, 0.2], [-0.2, 0.2], [-0.2, 0.2]]
-            distribution: "uniform"
-            setup_only: False
+      # rigid_body_properties:
+      #   direct:
+      #     force:
+      #       range: [[-0.2, 0.2], [-0.2, 0.2], [-0.2, 0.2]]
+      #       distribution: "uniform"
+      #       setup_only: False
 
-    on_reset:
-      articulation_view_properties:
-        additive:
-          velocity:
-            range: [[-2, 2], [-2, 2], [-0.1, 0.1], [-0.05, 0.05], [-0.05, 0.05], [-0.05, 0.05]]
-            distribution: "uniform"
-            setup_only: False
+    # on_reset:
+    #   articulation_view_properties:
+    #     additive:
+    #       velocity:
+    #         range: [[-2, 2], [-2, 2], [-0.1, 0.1], [-0.05, 0.05], [-0.05, 0.05], [-0.05, 0.05]]
+    #         distribution: "uniform"
+    #         setup_only: False
 
 
