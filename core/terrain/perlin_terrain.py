@@ -1,66 +1,77 @@
-from perlin_noise import PerlinNoise
-from core.terrain.terrain import TerrainBuild, TerrainBuilder
 import torch
+from core.terrain.terrain import TerrainBuild, TerrainBuilder
+from core.utils.physics import set_physics_properties
+from perlin_noise import PerlinNoise
 
 
 class PerlinTerrainBuild(TerrainBuild):
     def __init__(
         self,
-        container,
+        stage,
+        path: str,
         size: list[int],
         position: list[int],
         rotation: list[int],
         detail: list[int],
         height: float,
-        bumpiness: float,
+        octaves: float,
+        noise_scale: float,
     ):
-        super().__init__(container, size, position, rotation, detail, height)
+        super().__init__(stage, path, size, position, rotation, detail, height)
 
-        self.bumpiness = bumpiness
+        self.octaves = octaves
+        self.noise_scale = noise_scale
 
 
 class PerlinTerrainBuilder(TerrainBuilder):
     def __init__(
         self,
-        size: list[int] = [10, 10],
-        position: list[int] = [0, 0, -0.05],
-        rotation: list[int] = [0, 0, 0],
-        detail: list[int] = [20, 20, 20],
-        height: float = 0.1,
-        randomize: bool = False,
-        bumpiness: float = 24,
+        base_path: str = None,
+        size=None,
+        position=None,
+        rotation=None,
+        detail=None,
+        height: float = 0.05,
+        octaves: float = 12,
+        noise_scale: float = 4,
     ):
-        super().__init__(size, position, rotation, detail, height, randomize)
+        if detail is None:
+            detail = [40, 40, 40]
+        if rotation is None:
+            rotation = [0, 0, 0]
+        if position is None:
+            position = [0, 0, 0]
+        if size is None:
+            size = [10, 10]
 
-        self.bumpiness = bumpiness
+        super().__init__(base_path, size, position, rotation, detail, height)
+
+        self.octaves = octaves
+        self.noise_scale = noise_scale
 
     def build(self, stage):
-        import omni.isaac.core
-        from omni.isaac.core.utils.stage import get_current_stage
-        from pxr.Usd import Stage
-
-        assert isinstance(stage, Stage), "Container must be of type UsdStage."
-
         num_rows = int(self.size[0] * self.detail[0])
         num_cols = int(self.size[1] * self.detail[1])
 
         heightmap = torch.zeros((num_rows, num_cols))
 
-        noise = PerlinNoise(octaves=self.bumpiness)
+        noise = PerlinNoise(octaves=self.octaves)
 
         for i in range(num_rows):
             for j in range(num_cols):
-                heightmap[i, j] = noise([i / num_rows, j / num_cols])
+                heightmap[i, j] = noise([i / num_rows * self.noise_scale, j / num_cols * self.noise_scale])
 
-        vertices, triangles = self._heightmap_to_mesh(heightmap, num_cols, num_rows)
-        self._add_mesh_to_world(stage, vertices, triangles)
+        terrain_path = self._add_heightmap_to_world(heightmap, num_cols, num_rows)
+        set_physics_properties(terrain_path)
 
         return PerlinTerrainBuild(
             stage,
+            terrain_path,
             self.size,
             self.position,
             self.rotation,
             self.detail,
             self.height,
-            self.bumpiness,
+            self.octaves,
+            self.noise_scale
         )

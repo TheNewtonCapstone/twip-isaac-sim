@@ -173,7 +173,7 @@ if __name__ == "__main__":
             num_envs=cli_args.num_envs,
         )
 
-    def procedural_env_factory() -> GenericEnv:
+    def procedural_env_factory() -> ProceduralEnv:
         return ProceduralEnv(
             world_settings=world_config,
             num_envs=cli_args.num_envs,
@@ -185,7 +185,7 @@ if __name__ == "__main__":
     rl_config["params"]["config"]["full_experiment_name"] = (
         rl_config["params"]["config"]["full_experiment_name"]
         + "_"
-        + datetime.now().strftime("%d%m%y%H%M%S")
+        + datetime.now().strftime("%y%m%d%H%M%S")
     )
 
     task_architect = base_task_architect(

@@ -19,6 +19,8 @@ class BaseEnv(ABC):
         world_settings: Dict,
         num_envs: int,
     ) -> None:
+        self.world = None
+        self.agent = None
         self.world_settings = world_settings
         self.num_envs = num_envs
 

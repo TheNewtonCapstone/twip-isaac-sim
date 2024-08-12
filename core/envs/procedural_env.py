@@ -8,8 +8,8 @@ from core.terrain.terrain import TerrainBuilder
 
 
 class ProceduralEnv(BaseEnv):
-    def __init__(self, world_settings, num_envs):
-        super().__init__(world_settings, num_envs=num_envs)
+    def __init__(self, world_settings, num_envs) -> None:
+        super().__init__(world_settings, num_envs)
 
     def construct(self, agent: BaseAgent, terrain_builder: TerrainBuilder) -> bool:
         super().construct(agent, terrain_builder)
@@ -21,7 +21,7 @@ class ProceduralEnv(BaseEnv):
         from omni.isaac.core.utils.prims import define_prim
 
         # add a terrain
-        terrain_builder.build(get_current_stage())
+        terrain = terrain_builder.build(get_current_stage())
 
         # clone the agent
         cloner = GridCloner(spacing=1)
@@ -38,7 +38,7 @@ class ProceduralEnv(BaseEnv):
             physicsscene_path="/physicsScene",
             collision_root_path="/collisionGroups",
             prim_paths=self.agent_paths,
-            global_paths=["/World/groundPlane"],
+            global_paths=["/World/groundPlane", terrain_builder.base_path],
         )
         cloner.clone(
             source_prim_path=self.base_agent_path,
@@ -102,7 +102,8 @@ class ProceduralEnv(BaseEnv):
         self.twip_art_view.set_joint_velocity_targets(
             torch.zeros(num_to_reset, 2), indices=indices
         )
-        # using set_velocities instead of individual methods (lin & ang), because it's the only method supported in the GPU pipeline
+        # using set_velocities instead of individual methods (lin & ang),
+        # because it's the only method supported in the GPU pipeline
         self.twip_art_view.set_velocities(torch.zeros(num_to_reset, 6), indices=indices)
         self.twip_art_view.set_joint_positions(
             torch.zeros(num_to_reset, 2), indices=indices
@@ -113,29 +114,7 @@ class ProceduralEnv(BaseEnv):
 
         # orientations need to have the quaternion in WXYZ format, and 1 as the first element, the rest being zeros
         orientations = torch.tile(torch.tensor([1.0, 0, 0, 0]), (num_to_reset, 1))
-
-        # from GridCloner
-        # translations should arrange all agents in a grid, with a spacing of 1, even if it's not a perfect square
-        # an agent should always be at the same position in the grid (same index as specified in indices)
-        spacing = 1
-        num_per_row = int(np.sqrt(self.num_envs))
-        num_rows = np.ceil(self.num_envs / num_per_row)
-        num_cols = np.ceil(self.num_envs / num_rows)
-
-        row_offset = 0.5 * spacing * (num_rows - 1)
-        col_offset = 0.5 * spacing * (num_cols - 1)
-
-        translations = torch.zeros(num_to_reset, 3)
-
-        for i, idx in enumerate(indices):
-            row = idx // num_cols
-            col = idx % num_cols
-            x = row_offset - row * spacing
-            y = col * spacing - col_offset
-
-            translations[i, 0] = x
-            translations[i, 1] = y
-            translations[i, 2] = 0.115
+        translations = torch.tile(torch.tensor([0, 0, 0.115]), (num_to_reset, 1))
 
         self.twip_art_view.set_local_poses(
             translations=translations,
