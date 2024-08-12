@@ -68,7 +68,8 @@ class GenericEnv(BaseEnv):
         )
 
         if self.randomize:
-            self.domain_randomizer = DomainRandomizer(self.world, self.twip_art_view, self.randomization_params)
+            self.domain_randomizer = DomainRandomizer(self.world, self.num_envs, self.twip_art_view, self.randomization_params)
+            print("Domain randomizer initialized")
             self.domain_randomizer.apply_randomization()
         self.frame_idx = 0
 
