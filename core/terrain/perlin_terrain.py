@@ -1,6 +1,5 @@
 import torch
 from core.terrain.terrain import TerrainBuild, TerrainBuilder
-from core.utils.physics import set_physics_properties
 from perlin_noise import PerlinNoise
 
 
@@ -10,8 +9,8 @@ class PerlinTerrainBuild(TerrainBuild):
         stage,
         path: str,
         size: list[int],
-        position: list[int],
-        rotation: list[int],
+        position: list[float],
+        rotation: list[float],
         detail: list[int],
         height: float,
         octaves: float,
@@ -27,22 +26,22 @@ class PerlinTerrainBuilder(TerrainBuilder):
     def __init__(
         self,
         base_path: str = None,
-        size=None,
-        position=None,
-        rotation=None,
-        detail=None,
+        size: list[int] = None,
+        position: list[float] = None,
+        rotation: list[float] = None,
+        detail: list[int] = None,
         height: float = 0.05,
         octaves: float = 12,
         noise_scale: float = 4,
     ):
-        if detail is None:
-            detail = [40, 40, 40]
-        if rotation is None:
-            rotation = [0, 0, 0]
+        if size is None:
+            size = [5, 5]
         if position is None:
             position = [0, 0, 0]
-        if size is None:
-            size = [10, 10]
+        if rotation is None:
+            rotation = [0, 0, 0]
+        if detail is None:
+            detail = [20, 20]
 
         super().__init__(base_path, size, position, rotation, detail, height)
 
@@ -62,6 +61,8 @@ class PerlinTerrainBuilder(TerrainBuilder):
                 heightmap[i, j] = noise([i / num_rows * self.noise_scale, j / num_cols * self.noise_scale])
 
         terrain_path = self._add_heightmap_to_world(heightmap, num_cols, num_rows)
+
+        from core.utils.physics import set_physics_properties
         set_physics_properties(terrain_path)
 
         return PerlinTerrainBuild(

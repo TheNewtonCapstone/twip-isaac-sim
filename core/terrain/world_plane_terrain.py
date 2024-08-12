@@ -6,27 +6,26 @@ class DefaultGroundPlaneBuild(TerrainBuild):
         self,
         container,
         size: list[int],
-        position: list[int],
-        rotation: list[int],
+        position: list[float],
+        rotation: list[float],
         detail: list[int],
-        height,
+        height: float,
     ):
         super().__init__(container, size, position, rotation, detail, height)
 
 
 class DefaultGroundPlaneBuilder(TerrainBuilder):
-    def build(self, container):
+    def build(self, stage):
         import omni.isaac.core
-        from omni.isaac.core import World
-
-        assert isinstance(container, World), "Container must be of type World."
 
         # add a ground plane
-        container.scene.add_default_ground_plane()
+        stage.scene.add_default_ground_plane()
 
         return DefaultGroundPlaneBuild(
-            container,
+            stage,
+            self.size,
             self.position,
             self.rotation,
             self.detail,
+            self.height,
         )

@@ -9,8 +9,8 @@ class TerrainBuild:
         stage,
         path: str,
         size: list[int],
-        position: list[int],
-        rotation: list[int],
+        position: list[float],
+        rotation: list[float],
         detail: list[int],
         height: float,
     ):
@@ -29,21 +29,21 @@ class TerrainBuilder:
         self,
         base_path: str = None,
         size: list[int] = None,
-        position: list[int] = None,
-        rotation: list[int] = None,
+        position: list[float] = None,
+        rotation: list[float] = None,
         detail: list[int] = None,
         height: float = 1,
     ):
         if base_path is None:
             base_path = "/World/terrains"
-        if detail is None:
-            detail = [1, 1]
-        if rotation is None:
-            rotation = [0, 0, 0]
-        if position is None:
-            position = [0, 0, 0]
         if size is None:
             size = [1, 1]
+        if position is None:
+            position = [0, 0, 0]
+        if rotation is None:
+            rotation = [0, 0, 0]
+        if detail is None:
+            detail = [1, 1]
 
         self.base_path = base_path
         self.size = size
@@ -52,7 +52,7 @@ class TerrainBuilder:
         self.detail = detail
         self.height = height
 
-    def build(self, base_terrain_path: str) -> TerrainBuild:
+    def build(self, stage) -> TerrainBuild:
         pass
 
     def _add_heightmap_to_world(self, heightmap: torch.Tensor, num_cols: int, num_rows: int) -> str:

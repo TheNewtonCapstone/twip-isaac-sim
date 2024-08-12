@@ -12,12 +12,14 @@ from core.base.base_agent import BaseAgent
 class BaseTask(IVecEnv):
     def __init__(
         self,
-        env_factory: Callable[..., BaseEnv],
+        training_env_factory: Callable[..., BaseEnv],
+        playing_env_factory: Callable[..., BaseEnv],
         agent_factory: Callable[..., BaseAgent],
     ):
         self.config = {}
 
-        self.env_factory = env_factory
+        self.training_env_factory = training_env_factory
+        self.playing_env_factory = playing_env_factory
         self.env: BaseEnv = None
         self.agent_factory = agent_factory
         self.agent: BaseAgent = None
@@ -28,12 +30,14 @@ class BaseTask(IVecEnv):
         headless: bool,
         device: str,
         num_envs: int,
-        config: Dict[str, Any] = {},
+        playing: bool,
+        config: Dict[str, Any],
     ) -> None:
         self.config: Dict[str, Any] = config
 
         self.headless: bool = headless
         self.device: str = device
+        self.playing: bool = playing
 
         self.num_envs: int = num_envs
         self.max_episode_length: int = self.config["max_episode_length"]
@@ -93,7 +97,7 @@ class BaseTask(IVecEnv):
     def reset(self) -> Dict[str, torch.Tensor]:
         # resets a single environment
         # returns: the observations
-        return
+        pass
 
     def seed(self, seed) -> None:
         pass

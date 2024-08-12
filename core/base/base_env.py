@@ -18,14 +18,16 @@ class BaseEnv(ABC):
         self,
         world_settings: Dict,
         num_envs: int,
+        terrain_builder: TerrainBuilder,
     ) -> None:
         self.world = None
         self.agent = None
         self.world_settings = world_settings
         self.num_envs = num_envs
+        self.terrain_builder = terrain_builder
 
     @abstractmethod
-    def construct(self, agent: BaseAgent, terrain: TerrainBuilder) -> str:
+    def construct(self, agent: BaseAgent) -> str:
         self.agent = agent  # save the agent class for informative purposes (i.e. introspection/debugging)
 
         import omni.isaac.core
@@ -46,7 +48,7 @@ class BaseEnv(ABC):
         # Adjust physics scene settings (mainly for GPU memory allocation)
         phys_context = self.world.get_physics_context()
         phys_context.set_gpu_found_lost_aggregate_pairs_capacity(
-            max(self.num_envs * 64, 1024)
+            max(self.num_envs ** 3, 1024)
         )  # 1024 is the default value, eyeballed the other value
         phys_context.set_gpu_total_aggregate_pairs_capacity(
             max(self.num_envs * 64, 1024)

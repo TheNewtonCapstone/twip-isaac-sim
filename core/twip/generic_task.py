@@ -13,17 +13,19 @@ from core.terrain.perlin_terrain import PerlinTerrainBuilder
 class GenericTask(BaseTask):
     def __init__(
         self,
-        env_factory: Callable[..., BaseEnv],
+        training_env_factory: Callable[..., BaseEnv],
+        playing_env_factory: Callable[..., BaseEnv],
         agent_factory: Callable[..., BaseAgent],
     ):
-        super().__init__(env_factory, agent_factory)
+        super().__init__(training_env_factory, playing_env_factory, agent_factory)
 
     def load_config(
         self,
         headless: bool,
         device: str,
         num_envs: int,
-        config: Dict[Any, str] = {},
+        playing: bool,
+        config: Dict[str, Any],
     ) -> None:
         config["device"] = device
         config["headless"] = headless
@@ -72,20 +74,21 @@ class GenericTask(BaseTask):
             headless=headless,
             device=device,
             num_envs=num_envs,
+            playing=playing,
             config=config,
         )
 
     def construct(self) -> bool:
-        self.env = self.env_factory()
+        self.env = self.playing_env_factory() if self.playing else self.training_env_factory()
         self.agent = self.agent_factory()
 
-        self.env.construct(self.agent, PerlinTerrainBuilder())
+        self.env.construct(self.agent)
 
         return True
 
     # RL-Games methods (required from IVecEnv)
     def step(
-        self, actions: torch.Tensor
+        self, actions: torch.Tensor = None
     ) -> Tuple[
         Dict[str, torch.Tensor], torch.Tensor, torch.Tensor, Dict[str, Any] | None
     ]:
