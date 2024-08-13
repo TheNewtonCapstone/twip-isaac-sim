@@ -7,6 +7,7 @@ from core.sensors.imu.imu import IMU
 from core.twip.twip_agent import TwipAgent
 from core.domain_randomizer.domain_randomizer import DomainRandomizer
 
+
 # TODO: should be called GenericTwipEnv
 class GenericEnv(BaseEnv):
     def __init__(self, world_settings, num_envs, randomization_settings):
@@ -16,7 +17,9 @@ class GenericEnv(BaseEnv):
             randomization_settings=randomization_settings,
         )
         self.randomize = randomization_settings.get("randomize", False)
-        self.randomization_params = randomization_settings.get("randomization_params", {})
+        self.randomization_params = randomization_settings.get(
+            "randomization_params", {}
+        )
 
     def construct(self, agent: BaseAgent) -> bool:
         super().construct(agent)
@@ -68,7 +71,9 @@ class GenericEnv(BaseEnv):
         )
 
         if self.randomize:
-            self.domain_randomizer = DomainRandomizer(self.world, self.num_envs, self.twip_art_view, self.randomization_params)
+            self.domain_randomizer = DomainRandomizer(
+                self.world, self.num_envs, self.twip_art_view, self.randomization_params
+            )
             print("Domain randomizer initialized")
             self.domain_randomizer.apply_randomization()
         self.frame_idx = 0
@@ -113,7 +118,9 @@ class GenericEnv(BaseEnv):
             torch.zeros(num_to_reset, 2), indices=indices
         )
 
-        orientations = torch.tile(torch.tensor([1.0, 0, 0, 0]), (num_to_reset, 1))
+        orientations = torch.tile(
+            torch.tensor([0.98037, -0.18795, -0.01142, 0.05846]), (num_to_reset, 1)
+        )
 
         spacing = 1
         num_per_row = int(np.sqrt(self.num_envs))
