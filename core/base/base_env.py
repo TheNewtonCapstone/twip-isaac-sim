@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Dict
+from typing import Dict, Type
 import torch
 
 from core.base.base_agent import BaseAgent
 from core.terrain.terrain import TerrainBuilder
+
 
 # TODO: separate into 3 classes: BaseEnv, BaseTask, BaseAgent
 # BaseEnv: contains the world, agents and settings
@@ -18,13 +19,13 @@ class BaseEnv(ABC):
         self,
         world_settings: Dict,
         num_envs: int,
-        terrain_builder: TerrainBuilder,
+        terrain_builders: list[Type[TerrainBuilder]],
     ) -> None:
         self.world = None
         self.agent = None
+        self.terrain_builders = terrain_builders
         self.world_settings = world_settings
         self.num_envs = num_envs
-        self.terrain_builder = terrain_builder
 
     @abstractmethod
     def construct(self, agent: BaseAgent) -> str:
@@ -63,7 +64,7 @@ class BaseEnv(ABC):
     @abstractmethod
     def step(self, actions: torch.Tensor, render: bool) -> torch.Tensor:
         self.world.step(render=render)
-        return None
+        return torch.zeros(0)
 
     @abstractmethod
     def reset(
@@ -72,4 +73,4 @@ class BaseEnv(ABC):
     ) -> Dict[str, torch.Tensor]:
         self.world.reset()
 
-        return None
+        return {"obs": torch.zeros(0)}

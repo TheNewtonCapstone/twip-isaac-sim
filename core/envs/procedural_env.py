@@ -8,8 +8,8 @@ from core.terrain.terrain import TerrainBuilder
 
 
 class ProceduralEnv(BaseEnv):
-    def __init__(self, world_settings, num_envs, terrain_builder) -> None:
-        super().__init__(world_settings, num_envs, terrain_builder)
+    def __init__(self, world_settings, num_envs, terrain_builders) -> None:
+        super().__init__(world_settings, num_envs, terrain_builders)
 
     def construct(self, agent: BaseAgent) -> bool:
         super().construct(agent)
@@ -20,8 +20,10 @@ class ProceduralEnv(BaseEnv):
         from omni.isaac.core.utils.stage import get_current_stage
         from omni.isaac.core.utils.prims import define_prim
 
+        terrain_side_size = 10
+
         # add a terrain
-        self.terrain_builder.build(get_current_stage())
+        terrain = self.terrain_builders[0].build(get_current_stage())
 
         # clone the agent
         cloner = GridCloner(spacing=1)
@@ -38,7 +40,7 @@ class ProceduralEnv(BaseEnv):
             physicsscene_path="/physicsScene",
             collision_root_path="/collisionGroups",
             prim_paths=self.agent_paths,
-            global_paths=["/World/groundPlane", self.terrain_builder.base_path],
+            global_paths=["/World/groundPlane", terrain.path],
         )
         cloner.clone(
             source_prim_path=self.base_agent_path,

@@ -9,8 +9,8 @@ from core.twip.twip_agent import TwipAgent
 
 # TODO: should be called GenericTwipEnv
 class GenericEnv(BaseEnv):
-    def __init__(self, world_settings, num_envs, terrain_builder) -> None:
-        super().__init__(world_settings, num_envs, terrain_builder)
+    def __init__(self, world_settings, num_envs, terrain_builders) -> None:
+        super().__init__(world_settings, num_envs, terrain_builders)
 
     def construct(self, agent: BaseAgent) -> bool:
         super().construct(agent)
@@ -22,7 +22,7 @@ class GenericEnv(BaseEnv):
         from omni.isaac.core.utils.prims import define_prim
 
         # add a ground plane
-        self.terrain_builder.build(get_current_stage())
+        self.terrain_builders[0].build(get_current_stage())
 
         # clone the agent
         cloner = GridCloner(spacing=1)

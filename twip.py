@@ -120,7 +120,7 @@ if __name__ == "__main__":
         env = ProceduralEnv(
             world_settings=world_config,
             num_envs=cli_args.num_envs,
-            terrain_builder=FlatTerrainBuilder(),
+            terrain_builders=[FlatTerrainBuilder, PerlinTerrainBuilder],
         )
         twip = TwipAgent(twip_settings)
 
@@ -172,14 +172,14 @@ if __name__ == "__main__":
         return GenericEnv(
             world_settings=world_config,
             num_envs=cli_args.num_envs,
-            terrain_builder=FlatTerrainBuilder(),
+            terrain_builders=[FlatTerrainBuilder],
         )
 
     def procedural_env_factory() -> ProceduralEnv:
         return ProceduralEnv(
             world_settings=world_config,
             num_envs=cli_args.num_envs,
-            terrain_builder=PerlinTerrainBuilder()
+            terrain_builders=[FlatTerrainBuilder, PerlinTerrainBuilder]
         )
 
     def twip_agent_factory() -> TwipAgent:

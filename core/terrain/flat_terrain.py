@@ -6,49 +6,46 @@ class FlatTerrainBuild(TerrainBuild):
     def __init__(
         self,
         stage,
-        prim_path: str,
         size: list[int],
         position: list[float],
-        rotation: list[float],
-        detail: list[int],
+        path: str,
     ):
-        super().__init__(stage, prim_path, size, position, rotation, detail, 0)
+        super().__init__(stage, size, [2, 2], 0, position, path)
 
 
 # detail does not affect the flat terrain, the number of vertices is determined by the size
 class FlatTerrainBuilder(TerrainBuilder):
-    def __init__(
-        self,
-        base_path: str = None,
-        size: list[int] = None,
-        position: list[float] = None,
-        rotation: list[float] = None,
-        detail: list[int] = None
-    ):
+    @staticmethod
+    def build(stage, size=None, resolution=None, height=0, position=None, path="/World/terrains"):
+        """
+        Notes:
+            Resolution and height are not used for flat terrain.
+        """
+
         if size is None:
-            size = [5, 5]
+            size = [2, 2]
         if position is None:
             position = [0, 0, 0]
-        if rotation is None:
-            rotation = [0, 0, 0]
-        if detail is None:
-            detail = [1, 1]
 
-        super().__init__(base_path, size, position, rotation, detail, 0)
+        heightmap = torch.tensor([[0.0] * 2] * 2)
 
-    def build(self, stage):
-        heightmap = torch.zeros(self.size)
-
-        terrain_path = self._add_heightmap_to_world(heightmap, self.size[0], self.size[1])
+        terrain_path = TerrainBuilder._add_heightmap_to_world(
+            heightmap,
+            size,
+            2,
+            2,
+            height,
+            path,
+            "flat",
+            position
+        )
 
         from core.utils.physics import set_physics_properties
         set_physics_properties(terrain_path)
 
         return FlatTerrainBuild(
             stage,
+            size,
+            position,
             terrain_path,
-            self.size,
-            self.position,
-            self.rotation,
-            self.detail,
         )

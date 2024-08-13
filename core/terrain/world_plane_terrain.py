@@ -4,18 +4,20 @@ from core.terrain.terrain import TerrainBuilder, TerrainBuild
 class DefaultGroundPlaneBuild(TerrainBuild):
     def __init__(
         self,
-        container,
-        size: list[int],
-        position: list[float],
-        rotation: list[float],
-        detail: list[int],
-        height: float,
+        stage,
+        path: str,
     ):
-        super().__init__(container, size, position, rotation, detail, height)
+        super().__init__(stage, [], [], 0, [], path)
 
 
 class DefaultGroundPlaneBuilder(TerrainBuilder):
-    def build(self, stage):
+    @staticmethod
+    def build(stage, size=None, resolution=None, height=None, position=None, path="/World/terrains/groundPlane"):
+        """
+        Notes:
+            None of the parameters are used for the default ground plane.
+        """
+
         import omni.isaac.core
 
         # add a ground plane
@@ -23,9 +25,5 @@ class DefaultGroundPlaneBuilder(TerrainBuilder):
 
         return DefaultGroundPlaneBuild(
             stage,
-            self.size,
-            self.position,
-            self.rotation,
-            self.detail,
-            self.height,
+            path,
         )

@@ -1,4 +1,4 @@
-import gymnasium as gym
+import gym
 import numpy as np
 import torch
 from typing import Dict, Any, Tuple, Callable
@@ -6,7 +6,6 @@ from typing import Dict, Any, Tuple, Callable
 from core.base.base_task import BaseTask
 from core.base.base_env import BaseEnv
 from core.base.base_agent import BaseAgent
-from core.terrain.perlin_terrain import PerlinTerrainBuilder
 
 
 # should be called BalancingTwipTask
