@@ -130,9 +130,9 @@ class GenericTask(BaseTask):
         env_info["episode"] = episode_info
 
         # process failures (when falling)
-        self.dones_buf = torch.where(torch.abs(twip_roll) > 0.26, True, False)
+        # self.dones_buf = torch.where(torch.abs(twip_roll) > 0.26, True, False)
         self.dones_buf = torch.where(
-            self.progress_buf >= self.max_episode_length - 1, True, self.dones_buf
+            self.progress_buf >= self.max_episode_length - 1, True, False
         )
 
         # creates a new tensor with only the indices of the environments that are done
