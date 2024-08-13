@@ -1,4 +1,4 @@
-randomize: True
+randomize: False
 randomization_params:
   frequency: 200   # Define how many environment steps between generating new randomizations
   color: True
@@ -14,18 +14,14 @@ randomization_params:
     on_interval:
       articulation_view_properties:
         additive:
-          position:
-            range: [[-0.05, 0.05], [-0.05, 0.05], [-0.05, 0.05]]
-            distribution: "uniform"
-            setup_only: False
           
-          orientation:
-            range: [[-0.1, 0.1], [-0.1, 0.1], [-0.1, 0.1]]
-            distribution: "uniform"
-            setup_only: False
+          # orientation:
+          #   range: [[-0.1, 0.1], [-0.1, 0.1], [-0.1, 0.1]]
+          #   distribution: "uniform"
+          #   setup_only: False
           
           velocity:
-            range: [[-0.1, 0.1], [-0.1, 0.1], [-0.1, 0.1], [-0.1, 0.1], [-0.1, 0.1], [-0.1, 0.1]]
+            range: [[-1, 1], [-1, 1], [-0.1, 0.1], [-0.05, 0.05], [-0.05, 0.05], [-0.05, 0.05]]
             distribution: "uniform"
             setup_only: False
           
