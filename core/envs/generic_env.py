@@ -11,12 +11,8 @@ from core.domain_randomizer.domain_randomizer import DomainRandomizer
 # TODO: should be called GenericTwipEnv
 class GenericEnv(BaseEnv):
     def __init__(self, world_settings, num_envs, terrain_builders, randomization_settings):
-        super().__init__(
-            world_settings,
-            num_envs,
-            terrain_builders,
-            randomization_settings,
-        )
+        super().__init__(world_settings, num_envs, terrain_builders, randomization_settings)
+
         self.randomize = randomization_settings.get("randomize", False)
         self.randomization_params = randomization_settings.get("randomization_params", {})
 
@@ -30,7 +26,7 @@ class GenericEnv(BaseEnv):
         from omni.isaac.core.utils.prims import define_prim
 
         # add a ground plane
-        self.terrain_builders[0].build(get_current_stage())
+        self.terrain_builders[0].build_from_self(get_current_stage(), [0, 0, 0])
 
         # clone the agent
         cloner = GridCloner(spacing=1)
@@ -100,7 +96,6 @@ class GenericEnv(BaseEnv):
         self.frame_idx += 1
 
         return obs
-
 
     def reset(
         self,

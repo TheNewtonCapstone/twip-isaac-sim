@@ -127,7 +127,7 @@ if __name__ == "__main__":
         env = ProceduralEnv(
             world_settings=world_config,
             num_envs=cli_args.num_envs,
-            terrain_builders=[PerlinTerrainBuilder, FlatTerrainBuilder],
+            terrain_builders=[PerlinTerrainBuilder(), FlatTerrainBuilder()],
             randomization_settings=randomization_config
         )
 
@@ -145,22 +145,28 @@ if __name__ == "__main__":
     # RL TRAINING #
     # ----------- #
 
-    # override config with CLI args
-
     def generic_env_factory() -> GenericEnv:
         return GenericEnv(
             world_settings=world_config,
             num_envs=cli_args.num_envs,
-            terrain_builders=[FlatTerrainBuilder],
+            terrain_builders=[FlatTerrainBuilder()],
             randomization_settings=randomization_config,
         )
 
 
     def procedural_env_factory() -> ProceduralEnv:
+        terrains_size = [10, 10]
+        terrains_resolution = [16, 16]
+
         return ProceduralEnv(
             world_settings=world_config,
             num_envs=cli_args.num_envs,
-            terrain_builders=[FlatTerrainBuilder, PerlinTerrainBuilder],
+            terrain_builders=[
+                FlatTerrainBuilder(size=terrains_size),
+                PerlinTerrainBuilder(size=terrains_size, resolution=terrains_resolution, octave=4, noise_scale=2),
+                PerlinTerrainBuilder(size=terrains_size, resolution=terrains_resolution, octave=8, noise_scale=4),
+                PerlinTerrainBuilder(size=terrains_size, resolution=terrains_resolution, octave=16, noise_scale=8),
+            ],
             randomization_settings=randomization_config,
         )
 

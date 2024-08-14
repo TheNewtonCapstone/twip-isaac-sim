@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Type
+from typing import Dict, Type, Union
 import torch
 
 from core.base.base_agent import BaseAgent
@@ -19,7 +19,7 @@ class BaseEnv(ABC):
         self,
         world_settings: Dict,
         num_envs: int,
-        terrain_builders: list[Type[TerrainBuilder]],
+        terrain_builders: list[TerrainBuilder],
         randomization_settings: Dict,
     ) -> None:
         self.world = None
