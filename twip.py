@@ -163,9 +163,27 @@ if __name__ == "__main__":
             num_envs=cli_args.num_envs,
             terrain_builders=[
                 FlatTerrainBuilder(size=terrains_size),
-                PerlinTerrainBuilder(size=terrains_size, resolution=terrains_resolution, octave=4, noise_scale=2),
-                PerlinTerrainBuilder(size=terrains_size, resolution=terrains_resolution, octave=8, noise_scale=4),
-                PerlinTerrainBuilder(size=terrains_size, resolution=terrains_resolution, octave=16, noise_scale=8),
+                PerlinTerrainBuilder(
+                    size=terrains_size,
+                    resolution=terrains_resolution,
+                    height=0.05,
+                    octave=4,
+                    noise_scale=2
+                ),
+                PerlinTerrainBuilder(
+                    size=terrains_size,
+                    resolution=terrains_resolution,
+                    height=0.03,
+                    octave=8,
+                    noise_scale=4
+                ),
+                PerlinTerrainBuilder(
+                    size=terrains_size,
+                    resolution=terrains_resolution,
+                    height=0.01,
+                    octave=16,
+                    noise_scale=8
+                ),
             ],
             randomization_settings=randomization_config,
         )
