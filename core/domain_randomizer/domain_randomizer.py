@@ -98,8 +98,31 @@ class DomainRandomizer:
     def apply_randomization(self):
         with self.dr.trigger.on_rl_frame(num_envs=self.num_envs):
 
-            
             with self.dr.gate.on_interval(interval=self.frequency):
+                for body in self.on_interval_properties:
+                    
+                    if "articulation_view_properties" in body:
+                        for prop in self.on_interval_properties[body]:
+                            body_properties = self.on_interval_properties.get(body, {})
+                            args = body_properties.get(prop, {})
+                            
+                            self.dr.physics_view.randomize_articulation_view(
+                                view_name=self.twip_art_view.name,
+                                operation=str(prop),
+                                **args,
+                            )
+                    if "dof_properties" in body:
+                        for prop in self.on_interval_properties[body]:
+                            body_properties = self.on_interval_properties.get(body, {})
+                            args = body_properties.get(prop, {})
+                            
+                            self.dr.physics_view.randomize_articulation_view(
+                                view_name=self.twip_art_view.name,
+                                operation=str(prop),
+                                **args,
+                            )
+
+            with self.dr.gate.on_env_reset():
                 for body in self.on_reset_properties:
                     
                     if "articulation_view_properties" in body:
@@ -122,30 +145,6 @@ class DomainRandomizer:
                                 operation=str(prop),
                                 **args,
                             )
-
-            # with self.dr.gate.on_env_reset():
-            #     for body in self.on_reset_properties:
-            #         
-            #         if "articulation_view_properties" in body:
-            #             for prop in self.on_reset_properties[body]:
-            #                 body_properties = self.on_reset_properties.get(body, {})
-            #                 args = body_properties.get(prop, {})
-            #                 
-            #                 self.dr.physics_view.randomize_articulation_view(
-            #                     view_name=self.twip_art_view.name,
-            #                     operation=str(prop),
-            #                     **args,
-            #                 )
-            #         if "dof_properties" in body:
-            #             for prop in self.on_reset_properties[body]:
-            #                 body_properties = self.on_reset_properties.get(body, {})
-            #                 args = body_properties.get(prop, {})
-            #                 
-            #                 self.dr.physics_view.randomize_articulation_view(
-            #                     view_name=self.twip_art_view.name,
-            #                     operation=str(prop),
-            #                     **args,
-            #                 )
 
 
     def step_randomization(self):
