@@ -79,8 +79,6 @@ class GenericEnv(BaseEnv):
             print("Domain randomizer initialized")
             self.domain_randomizer.apply_randomization()
 
-        self.frame_idx = 0
-
         return self.base_agent_path
 
     def step(self, actions: torch.Tensor, render: bool) -> torch.Tensor:
@@ -89,15 +87,13 @@ class GenericEnv(BaseEnv):
         if not render:
             self.world.app.update()
 
+        self.world.step(render=render)
+        
         if self.randomize:
             self.domain_randomizer.step_randomization()
 
-        self.world.step(render=render)
-
         self.imu.update(self.world.get_physics_dt())
         obs = self._gather_imus_frame()
-
-        self.frame_idx += 1
 
         return obs
 

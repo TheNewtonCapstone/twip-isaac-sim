@@ -5,6 +5,7 @@ import numpy as np
 
 from core.base.base_agent import BaseAgent
 from core.base.base_env import BaseEnv
+from core.domain_randomizer.domain_randomizer import DomainRandomizer
 from core.sensors.imu.imu import IMU
 from core.terrain.terrain import TerrainBuilder
 
@@ -14,6 +15,8 @@ class ProceduralEnv(BaseEnv):
         super().__init__(world_settings, num_envs, terrain_builders, randomization_settings)
 
         self.agent_positions = torch.zeros(self.num_envs, 3)
+        self.randomize = randomization_settings.get("randomize", False)
+        self.randomization_params = randomization_settings.get("randomization_params", {})
 
     def construct(self, agent: BaseAgent) -> bool:
         super().construct(agent)
@@ -135,6 +138,14 @@ class ProceduralEnv(BaseEnv):
             }
         )
 
+        if self.randomize:
+            self.domain_randomizer = DomainRandomizer(
+                self.world, self.num_envs, self.twip_art_view, self.randomization_params
+            )
+            print("Domain randomizer initialized")
+            self.domain_randomizer.apply_randomization()
+
+
         return base_agent_path
 
     def step(self, actions: torch.Tensor, render: bool) -> torch.Tensor:
@@ -149,6 +160,9 @@ class ProceduralEnv(BaseEnv):
             self.world.app.update()
 
         self.world.step(render=render)
+
+        if self.randomize:
+            self.domain_randomizer.step_randomization()
 
         # get observations from the cloned agents
         self.imu.update(self.world.get_physics_dt())
@@ -185,8 +199,10 @@ class ProceduralEnv(BaseEnv):
             torch.zeros(num_to_reset, 2), indices=indices
         )
 
-        # orientations need to have the quaternion in WXYZ format, and 1 as the first element, the rest being zeros
-        orientations = torch.tile(torch.tensor([1.0, 0, 0, 0]), (num_to_reset, 1))
+                # orientation at rest for the agents
+        orientations = torch.tile(
+            torch.tensor([0.98037, -0.18795, -0.01142, 0.05846]), (num_to_reset, 1)
+        )
 
         # ensure that we're on the same device (since we don't know which one in advance)
         if self.agent_positions.device != indices.device:

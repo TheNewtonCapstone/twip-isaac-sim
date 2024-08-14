@@ -21,7 +21,7 @@ randomization_params:
           #   setup_only: False
           
           velocity:
-            range: [[-1, 1], [-1, 1], [-0.1, 0.1], [-0.05, 0.05], [-0.05, 0.05], [-0.05, 0.05]]
+            range: [[-0.1, 0.1], [-2, 2], [-0.1, 0.1], [-0.05, 0.05], [-0.05, 0.05], [-0.05, 0.05]]
             distribution: "uniform"
             setup_only: False
           
