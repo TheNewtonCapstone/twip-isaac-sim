@@ -61,7 +61,8 @@ class ProceduralEnv(BaseEnv):
 
             # from the raycast, we can get the desired position of the agent to avoid clipping with the terrain
             raycast_height = 5
-            max_ray_dist = 0
+            max_ray_test_dist = 100
+            min_ray_dist = max_ray_test_dist
             num_rays = 9
             rays_side = math.isqrt(num_rays)
             ray_separation = 0.1
@@ -76,10 +77,10 @@ class ProceduralEnv(BaseEnv):
                 _, _, dist = raycast(
                     [terrain_spawn_position[0] + ray_x, terrain_spawn_position[1] + ray_y, raycast_height],
                     [0, 0, -1],
-                    max_distance=10
+                    max_distance=max_ray_test_dist
                 )
 
-                max_ray_dist += max(dist, max_ray_dist)
+                min_ray_dist = min(dist, min_ray_dist)
 
             # we want all agents to be evenly split across all terrains
             agent_batch_start = i * agent_batch_qty
@@ -87,7 +88,7 @@ class ProceduralEnv(BaseEnv):
 
             self.agent_positions[agent_batch_start:agent_batch_end, :] = torch.tensor(
                 # TODO: make it dependent on the agent's contact point
-                [terrain_spawn_position[0], terrain_spawn_position[1], raycast_height - max_ray_dist + 0.115]
+                [terrain_spawn_position[0], terrain_spawn_position[1], raycast_height - min_ray_dist + 0.115]
             )
 
         # in some cases, ceil will give us more positions than we need
