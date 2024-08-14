@@ -5,12 +5,19 @@ from core.base.base_agent import BaseAgent
 from core.base.base_env import BaseEnv
 from core.sensors.imu.imu import IMU
 from core.twip.twip_agent import TwipAgent
+from core.domain_randomizer.domain_randomizer import DomainRandomizer
 
 
 # TODO: should be called GenericTwipEnv
 class GenericEnv(BaseEnv):
-    def __init__(self, world_settings, num_envs, terrain_builders) -> None:
-        super().__init__(world_settings, num_envs, terrain_builders)
+    def __init__(self, world_settings, num_envs, terrain_builders, randomization_settings):
+        super().__init__(
+            world_settings,
+            num_envs=num_envs,
+            randomization_settings=randomization_settings,
+        )
+        self.randomize = randomization_settings.get("randomize", False)
+        self.randomization_params = randomization_settings.get("randomization_params", {})
 
     def construct(self, agent: BaseAgent) -> bool:
         super().construct(agent)
@@ -50,6 +57,7 @@ class GenericEnv(BaseEnv):
             prim_paths_expr="/World/envs/e.*/twip/body",
             name="twip_art_view",
         )
+
         self.world.scene.add(self.twip_art_view)
 
         self.world.reset()
@@ -63,26 +71,35 @@ class GenericEnv(BaseEnv):
             }
         )
 
+        if self.randomize:
+            self.domain_randomizer = DomainRandomizer(
+                self.world, self.num_envs, self.twip_art_view, self.randomization_params
+            )
+            print("Domain randomizer initialized")
+            self.domain_randomizer.apply_randomization()
+
+        self.frame_idx = 0
+
         return self.base_agent_path
 
     def step(self, actions: torch.Tensor, render: bool) -> torch.Tensor:
-        # apply actions to the cloned agents
         self._apply_actions(actions)
 
-        # From IsaacLab (SimulationContext)
-        # need to do one step to refresh the app
-        # reason: physics has to parse the scene again and inform other extensions like hydra-delegate.
-        # without this the app becomes unresponsive. If render is True, the world updates the app automatically.
         if not render:
             self.world.app.update()
 
+        if self.randomize:
+            self.domain_randomizer.step_randomization()
+
         self.world.step(render=render)
 
-        # get observations from the cloned agents
         self.imu.update(self.world.get_physics_dt())
         obs = self._gather_imus_frame()
 
+        self.frame_idx += 1
+
         return obs
+
 
     def reset(
         self,
@@ -92,8 +109,6 @@ class GenericEnv(BaseEnv):
 
         # we assume it's a full reset
         if indices is None:
-            print("FULL RESET")
-
             self.world.reset()  # reset the world too, because we're doing a full reset
 
             indices = torch.arange(self.num_envs)
@@ -112,8 +127,10 @@ class GenericEnv(BaseEnv):
             torch.zeros(num_to_reset, 2), indices=indices
         )
 
-        # orientations need to have the quaternion in WXYZ format, and 1 as the first element, the rest being zeros
-        orientations = torch.tile(torch.tensor([1.0, 0, 0, 0]), (num_to_reset, 1))
+        # orientation at rest for the agents
+        orientations = torch.tile(
+            torch.tensor([0.98037, -0.18795, -0.01142, 0.05846]), (num_to_reset, 1)
+        )
 
         # from GridCloner
         # translations should arrange all agents in a grid, with a spacing of 1, even if it's not a perfect square
@@ -151,30 +168,7 @@ class GenericEnv(BaseEnv):
 
     def _gather_imus_frame(self) -> torch.Tensor:
         imu_data = self.imu.data
-        return torch.cat((imu_data.lin_acc_b, imu_data.ang_vel_b, imu_data.quat_w), dim=1)
-    
-        from omni.isaac.sensor import _sensor
 
-        i_imu = _sensor.acquire_imu_sensor_interface()
-
-        imus_frame = torch.zeros(self.num_envs, 10)
-
-        for i, imu_path in enumerate(self.agent_imu_paths):
-            imu_data = i_imu.get_sensor_reading(imu_path)
-            imus_frame[i, :] = torch.tensor(
-                [
-                    imu_data.lin_acc_x,
-                    imu_data.lin_acc_y,
-                    imu_data.lin_acc_z,
-                    imu_data.ang_vel_x,
-                    imu_data.ang_vel_y,
-                    imu_data.ang_vel_z,
-                    # the quaternion is stored in WXYZ format in rest of Isaac
-                    imu_data.orientation[3],
-                    imu_data.orientation[0],
-                    imu_data.orientation[1],
-                    imu_data.orientation[2],
-                ],
-            )
-
-        return imus_frame
+        return torch.cat(
+            (imu_data.lin_acc_b, imu_data.ang_vel_b, imu_data.quat_w), dim=1
+        )

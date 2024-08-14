@@ -18,6 +18,7 @@ class GenericTask(BaseTask):
     ):
         super().__init__(training_env_factory, playing_env_factory, agent_factory)
 
+
     def load_config(
         self,
         headless: bool,
@@ -25,6 +26,7 @@ class GenericTask(BaseTask):
         num_envs: int,
         playing: bool,
         config: Dict[str, Any],
+        domain_rand: bool = False,
     ) -> None:
         config["device"] = device
         config["headless"] = headless
@@ -65,7 +67,8 @@ class GenericTask(BaseTask):
         )
 
         # task-specific config
-        config["domain_randomization"] = {}
+        config["domain_randomization"] = domain_rand
+        self.frame_idx = 0
 
         print(f"{self.__class__.__name__} loaded config {config}")
 
@@ -179,26 +182,54 @@ def compute_rewards_twip(
     # args: roll, angular velocity, actions
     # returns: rewards
 
-    combined_dof_vel = torch.abs(actions[:, 0]) + torch.abs(actions[:, 1])
+    # Compute rate of change of roll
+    roll_velocity = torch.diff(roll, dim=0, prepend=roll[:1])
 
-    # the smaller the difference between current orientation and stable orientation, the higher the reward
-    roll_rew = torch.tanh(6 * torch.abs(roll))
-    ang_vel_z_rew = torch.tanh(4 * torch.abs(ang_vel_z))
-    combined_dof_vel_rew = torch.tanh(combined_dof_vel) * 0.2
+    # Normalized position (assume max distance is 5 units)
+    # norm_position = torch.norm(position, dim=-1) / 5.0
 
-    rewards = 1.0 - roll_rew - ang_vel_z_rew - combined_dof_vel_rew
+    # Base reward for staying upright
+    upright_reward = 1.0 - torch.tanh(2 * torch.abs(roll))
 
-    # penalize for falling
-    rewards += torch.where(torch.abs(roll) > 0.5, -2.0, rewards)
+    # Penalties
+    roll_penalty = torch.tanh(3 * torch.abs(roll))
+    ang_vel_penalty = torch.tanh(2 * torch.abs(ang_vel_z))
+    action_penalty = torch.tanh(torch.sum(torch.abs(actions), dim=-1)) * 0.1
+    # position_penalty = torch.tanh(norm_position) * 0.2
+    roll_velocity_penalty = torch.tanh(2 * torch.abs(roll_velocity)) * 0.3
+
+    # Compute rewards
+    rewards = (
+        upright_reward
+        - roll_penalty
+        - ang_vel_penalty
+        - action_penalty
+        # - position_penalty
+        - roll_velocity_penalty
+    )
+
+    # Time factor to encourage longer balancing (assuming time_step is in seconds)
+    # time_factor = torch.tanh(time_step / 10.0)  # Normalize to [0, 1] over 10 seconds
+    # rewards *= 1.0 + time_factor
+
+    # Harsh penalty for falling
+    fall_penalty = torch.where(torch.abs(roll) > 0.26, -5.0, 0.0)
+    rewards += fall_penalty
 
     episode = {
         "roll": torch.median(torch.abs(roll)),
         "roll_var": torch.var(torch.abs(roll)),
-        "roll_rew": torch.mean(roll_rew),
+        "roll_penalty": torch.mean(roll_penalty),
         "ang_vel_z": torch.median(torch.abs(ang_vel_z)),
-        "ang_vel_z_rew": torch.mean(ang_vel_z_rew),
-        "combined_dof_vel": torch.median(combined_dof_vel),
-        "combined_dof_vel_rew": torch.mean(combined_dof_vel_rew),
+        "ang_vel_penalty": torch.mean(ang_vel_penalty),
+        "action_magnitude": torch.median(torch.sum(torch.abs(actions), dim=-1)),
+        "action_penalty": torch.mean(action_penalty),
+        # "position": torch.median(norm_position),
+        # "position_penalty": torch.mean(position_penalty),
+        "roll_velocity": torch.median(torch.abs(roll_velocity)),
+        "roll_velocity_penalty": torch.mean(roll_velocity_penalty),
+        # "time_factor": torch.mean(time_factor),
+        "upright_reward": torch.mean(upright_reward),
     }
 
     return rewards, episode

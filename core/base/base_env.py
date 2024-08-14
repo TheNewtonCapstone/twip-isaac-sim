@@ -1,10 +1,17 @@
 from abc import ABC, abstractmethod
+<<<<<<< HEAD
 from typing import Dict, Type
 import torch
 
 from core.base.base_agent import BaseAgent
 from core.terrain.terrain import TerrainBuilder
 
+=======
+from typing import Dict
+import torch
+
+from core.base.base_agent import BaseAgent
+>>>>>>> origin/new-reward-function
 
 # TODO: separate into 3 classes: BaseEnv, BaseTask, BaseAgent
 # BaseEnv: contains the world, agents and settings
@@ -19,10 +26,12 @@ class BaseEnv(ABC):
         self,
         world_settings: Dict,
         num_envs: int,
+        randomization_settings: Dict,
         terrain_builders: list[Type[TerrainBuilder]],
     ) -> None:
         self.world = None
         self.agent = None
+        self.randomization_settings = randomization_settings
         self.terrain_builders = terrain_builders
         self.world_settings = world_settings
         self.num_envs = num_envs
@@ -72,5 +81,5 @@ class BaseEnv(ABC):
         indices: torch.Tensor = None,
     ) -> Dict[str, torch.Tensor]:
         self.world.reset()
-
         return {"obs": torch.zeros(0)}
+

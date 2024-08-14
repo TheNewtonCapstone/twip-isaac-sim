@@ -20,8 +20,8 @@ class BaseTask(IVecEnv):
 
         self.training_env_factory = training_env_factory
         self.playing_env_factory = playing_env_factory
-        self.env: BaseEnv = None
         self.agent_factory = agent_factory
+
         self.agent: BaseAgent = None
         self.envs: List[BaseEnv] = []
 
@@ -50,6 +50,8 @@ class BaseTask(IVecEnv):
         self.observation_space: gym.spaces.Box = self.config["observation_space"]
         self.action_space: gym.spaces.Box = self.config["action_space"]
         self.state_space: gym.spaces.Box = self.config["state_space"]
+
+        self.domain_randomization: bool = self.config.get("domain_randomization", False)
 
         self._setup_buffers()
 

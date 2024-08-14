@@ -8,6 +8,6 @@
         "./_isaac_sim/exts/omni.isaac.cloner",
         "./_isaac_sim/python_packages",
         "./_isaac_sim/exts/omni.isaac.ml_archive/pip_prebundle/torch/nn/modules",
-        "./_isaac_sim/kit/exts/omni.usd.libs"
+        "./_isaac_sim/kit/exts/omni.usd.libs",
     ]
 }
