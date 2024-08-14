@@ -11,8 +11,23 @@ class DefaultGroundPlaneBuild(TerrainBuild):
 
 
 class DefaultGroundPlaneBuilder(TerrainBuilder):
+    def build_from_self(self, stage, position: list[float]) -> DefaultGroundPlaneBuild:
+        """
+        Notes:
+            None of the parameters are used for the default ground plane.
+        """
+
+        return self.build(
+            stage,
+            self.size,
+            self.resolution,
+            self.height,
+            position,
+            self.base_path
+        )
+
     @staticmethod
-    def build(stage, size=None, resolution=None, height=None, position=None, path="/World/terrains/groundPlane"):
+    def build(stage, size=None, resolution=None, height=None, position=None, path="/World/terrains/groundPlane") -> DefaultGroundPlaneBuild:
         """
         Notes:
             None of the parameters are used for the default ground plane.

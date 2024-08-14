@@ -22,6 +22,32 @@ class PerlinTerrainBuild(TerrainBuild):
 
 
 class PerlinTerrainBuilder(TerrainBuilder):
+    def __init__(
+        self,
+        size: list[float] = None,
+        resolution: list[int] = None,
+        height: float = 0.05,
+        base_path: str = None,
+        octave: int = 12,
+        noise_scale: float = 4,
+    ):
+        super().__init__(size, resolution, height, base_path)
+
+        self.octaves = octave
+        self.noise_scale = noise_scale
+
+    def build_from_self(self, stage, position: list[float]) -> PerlinTerrainBuild:
+        return self.build(
+            stage,
+            self.size,
+            self.resolution,
+            self.height,
+            position,
+            self.base_path,
+            self.octaves,
+            self.noise_scale,
+        )
+
     @staticmethod
     def build(
         stage,
@@ -30,9 +56,9 @@ class PerlinTerrainBuilder(TerrainBuilder):
         height=0.05,
         position=None,
         path="/World/terrains",
-        octaves=12,
-        noise_scale=4
-    ):
+        octaves: int = 12,
+        noise_scale: float = 4
+    ) -> PerlinTerrainBuild:
         if size is None:
             size = [20, 20]
         if resolution is None:

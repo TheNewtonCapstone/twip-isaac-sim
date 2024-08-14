@@ -15,8 +15,32 @@ class FlatTerrainBuild(TerrainBuild):
 
 # detail does not affect the flat terrain, the number of vertices is determined by the size
 class FlatTerrainBuilder(TerrainBuilder):
+    def __init__(
+        self,
+        size: list[int] = None,
+        resolution: list[int] = None,
+        height: float = 0,
+        base_path: str = None,
+    ):
+        super().__init__(size, resolution, height, base_path)
+
+    def build_from_self(self, stage, position: list[float]) -> FlatTerrainBuild:
+        """
+        Notes:
+            Resolution and height are not used for flat terrain.
+        """
+
+        return self.build(
+            stage,
+            self.size,
+            self.resolution,
+            self.height,
+            position,
+            self.base_path
+        )
+
     @staticmethod
-    def build(stage, size=None, resolution=None, height=0, position=None, path="/World/terrains"):
+    def build(stage, size=None, resolution=None, height=0, position=None, path="/World/terrains") -> FlatTerrainBuild:
         """
         Notes:
             Resolution and height are not used for flat terrain.

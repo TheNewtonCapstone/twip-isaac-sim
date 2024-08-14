@@ -6,6 +6,7 @@ EXTRA_PACKAGE_PATHS=(
     _isaac_sim/exts/omni.isaac.sensor
     _isaac_sim/exts/omni.isaac.cloner
     _isaac_sim/extsPhysics/omni.physx
+    _isaac_sim/extsPhysics/omni.usd.schema.physx
 )
 
 for path in "${EXTRA_PACKAGE_PATHS[@]}"; do

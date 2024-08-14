@@ -23,11 +23,34 @@ class TerrainBuild:
 
 
 class TerrainBuilder:
-    def __init__(self, base_path: str = None):
+    def __init__(
+        self,
+        size: list[float] = None,
+        resolution: list[int] = None,
+        height: float = 1,
+        base_path: str = None,
+    ):
+        if size is None:
+            size = [5, 5]
+        if resolution is None:
+            resolution = [10, 10]
         if base_path is None:
             base_path = "/World/terrains"
 
+        self.size = size
+        self.resolution = resolution
+        self.height = height
         self.base_path = base_path
+
+    def build_from_self(self, stage, position: list[float]) -> TerrainBuild:
+        return self.build(
+            stage,
+            self.size,
+            self.resolution,
+            self.height,
+            position,
+            self.base_path
+        )
 
     @staticmethod
     def build(

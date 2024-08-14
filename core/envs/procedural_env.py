@@ -1,3 +1,5 @@
+import math
+
 import torch
 import numpy as np
 
@@ -11,40 +13,109 @@ class ProceduralEnv(BaseEnv):
     def __init__(self, world_settings, num_envs, terrain_builders) -> None:
         super().__init__(world_settings, num_envs, terrain_builders)
 
+        self.agent_positions = torch.zeros(self.num_envs, 3)
+
     def construct(self, agent: BaseAgent) -> bool:
         super().construct(agent)
 
         import omni.isaac.core
-        from omni.isaac.cloner import GridCloner
+        from omni.isaac.cloner import Cloner
         from omni.isaac.core.articulations import ArticulationView
         from omni.isaac.core.utils.stage import get_current_stage
         from omni.isaac.core.utils.prims import define_prim
 
-        terrain_side_size = 10
+        stage = get_current_stage()
+        num_terrains = len(self.terrain_builders)
+        terrains_size = [10, 10]
+        terrains_resolution = [20, 20]
+        terrains_height = 0.05
 
-        # add a terrain
-        terrain = self.terrain_builders[0].build(get_current_stage())
+        # generates a list of positions for each of the terrains, in a grid pattern
+        terrain_positions = torch.tensor(
+            [
+                [i * terrains_size[0] - terrains_size[0] / 2, j * terrains_size[1] - terrains_size[1] / 2, 0]
+                for i in range(num_terrains)
+                for j in range(num_terrains)
+            ]
+        ).tolist()
+
+        terrain_paths = []
+        agent_batch_qty = int(math.ceil(self.num_envs / num_terrains))
+
+        from core.utils.physics import raycast
+
+        # build & add all given terrains
+        for i, terrain_builder in enumerate(self.terrain_builders):
+            terrain_spawn_position = terrain_positions[i]
+
+            terrain = terrain_builder.build(
+                stage,
+                terrains_size,
+                terrains_resolution,
+                terrains_height,
+                terrain_spawn_position,
+            )
+
+            terrain_paths.append(terrain.path)
+
+            # propagate physics changes
+            self.world.reset()
+
+            # from the raycast, we can get the desired position of the agent to avoid clipping with the terrain
+            raycast_height = 5
+            avg_ray_dist = 0
+            num_rays = 9
+            ray_separation = 0.1
+
+            for j in range(num_rays):
+                # we also want to cover a grid of rays on the xy-plane
+                rays_side = math.isqrt(num_rays)
+                start_x = -ray_separation * (rays_side / 2)
+                start_y = -ray_separation * (rays_side / 2)
+                ray_x = ray_separation * (j % rays_side) + start_x
+                ray_y = ray_separation * (j // rays_side) + start_y
+
+                _, _, dist = raycast(
+                    [terrain_spawn_position[0] + ray_x, terrain_spawn_position[1] + ray_y, raycast_height],
+                    [0, 0, -1],
+                    max_distance=10
+                )
+
+                avg_ray_dist += dist / num_rays
+
+            # we want all agents to be evenly split across all terrains
+            agent_batch_start = i * agent_batch_qty
+            agent_batch_end = i * agent_batch_qty + agent_batch_qty
+
+            self.agent_positions[agent_batch_start:agent_batch_end, :] = torch.tensor(
+                # TODO: make it dependent on the agent's contact point
+                [terrain_spawn_position[0], terrain_spawn_position[1], raycast_height - avg_ray_dist + 0.115]
+            )
+
+        # in some cases, ceil will give us more positions than we need
+        if len(self.agent_positions) > self.num_envs:
+            self.agent_positions = self.agent_positions[: self.num_envs]
 
         # clone the agent
-        cloner = GridCloner(spacing=1)
+        cloner = Cloner()
         cloner.define_base_env("/World/envs")
-        self.base_agent_path = "/World/envs/e_0"
-        define_prim(self.base_agent_path)
+        base_agent_path = "/World/envs/e_0"
+        define_prim(base_agent_path)
 
-        self.agent.construct(self.base_agent_path, self.world)
+        self.agent.construct(base_agent_path, self.world)
 
-        self.agent_paths = cloner.generate_paths("/World/envs/e", self.num_envs)
-        self.agent_imu_paths = [f"{path}/twip/body/imu" for path in self.agent_paths]
+        agent_paths = cloner.generate_paths("/World/envs/e", self.num_envs)
 
         cloner.filter_collisions(
             physicsscene_path="/physicsScene",
             collision_root_path="/collisionGroups",
-            prim_paths=self.agent_paths,
-            global_paths=["/World/groundPlane", terrain.path],
+            prim_paths=agent_paths,
+            global_paths=["/World/groundPlane"] + terrain_paths,
         )
         cloner.clone(
-            source_prim_path=self.base_agent_path,
-            prim_paths=self.agent_paths,
+            source_prim_path=base_agent_path,
+            prim_paths=agent_paths,
+            positions=self.agent_positions,
         )
 
         self.twip_art_view = ArticulationView(
@@ -64,7 +135,7 @@ class ProceduralEnv(BaseEnv):
             }
         )
 
-        return self.base_agent_path
+        return base_agent_path
 
     def step(self, actions: torch.Tensor, render: bool) -> torch.Tensor:
         # apply actions to the cloned agents
@@ -116,7 +187,12 @@ class ProceduralEnv(BaseEnv):
 
         # orientations need to have the quaternion in WXYZ format, and 1 as the first element, the rest being zeros
         orientations = torch.tile(torch.tensor([1.0, 0, 0, 0]), (num_to_reset, 1))
-        translations = torch.tile(torch.tensor([0, 0, 0.115]), (num_to_reset, 1))
+
+        # ensure that we're on the same device (since we don't know which one in advance)
+        if self.agent_positions.device != indices.device:
+            self.agent_positions = self.agent_positions.to(indices.device)
+
+        translations = self.agent_positions[indices]
 
         self.twip_art_view.set_local_poses(
             translations=translations,

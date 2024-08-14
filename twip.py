@@ -120,7 +120,7 @@ if __name__ == "__main__":
         env = ProceduralEnv(
             world_settings=world_config,
             num_envs=cli_args.num_envs,
-            terrain_builders=[FlatTerrainBuilder, PerlinTerrainBuilder],
+            terrain_builders=[PerlinTerrainBuilder, FlatTerrainBuilder],
         )
         twip = TwipAgent(twip_settings)
 
@@ -192,8 +192,8 @@ if __name__ == "__main__":
     )
 
     task_architect = base_task_architect(
-        generic_env_factory,
         procedural_env_factory,
+        generic_env_factory,
         twip_agent_factory,
         GenericTask,
     )
