@@ -18,7 +18,6 @@ class GenericTask(BaseTask):
     ):
         super().__init__(training_env_factory, playing_env_factory, agent_factory)
 
-
     def load_config(
         self,
         headless: bool,
@@ -243,7 +242,7 @@ def roll_from_quat(q: torch.Tensor) -> torch.Tensor:
 
     w, x, y, z = q[:, 0], q[:, 1], q[:, 2], q[:, 3]
 
-    roll = torch.arctan2(2 * (w * x + y * z), 1 - 2 * (x**2 + y**2))
+    roll = torch.arctan2(2 * (w * x + y * z), 1 - 2 * (x ** 2 + y ** 2))
     # pitch = torch.arcsin(2 * (w * y - z * x))
     # yaw = torch.arctan2(2 * (w * z + x * y), 1 - 2 * (y**2 + z**2))
 

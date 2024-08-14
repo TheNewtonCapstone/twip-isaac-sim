@@ -128,7 +128,7 @@ if __name__ == "__main__":
             world_settings=world_config,
             num_envs=cli_args.num_envs,
             terrain_builders=[PerlinTerrainBuilder, FlatTerrainBuilder],
-            randomization_config=randomization_config
+            randomization_settings=randomization_config
         )
 
         twip = TwipAgent(twip_settings)
@@ -139,6 +139,7 @@ if __name__ == "__main__":
         while sim_app.is_running():
             if env.world.is_playing():
                 env.step(torch.zeros(env.num_envs, 2), render=cli_args.headless)
+
 
     # ----------- #
     # RL TRAINING #
@@ -154,6 +155,7 @@ if __name__ == "__main__":
             randomization_settings=randomization_config,
         )
 
+
     def procedural_env_factory() -> ProceduralEnv:
         return ProceduralEnv(
             world_settings=world_config,
@@ -162,8 +164,10 @@ if __name__ == "__main__":
             randomization_settings=randomization_config,
         )
 
+
     def twip_agent_factory() -> TwipAgent:
         return TwipAgent(twip_settings)
+
 
     rl_config["params"]["config"]["full_experiment_name"] = (
         rl_config["params"]["config"]["full_experiment_name"]
@@ -172,6 +176,7 @@ if __name__ == "__main__":
     )
 
     task_architect = base_task_architect(
+        procedural_env_factory,
         generic_env_factory,
         twip_agent_factory,
         GenericTask,
@@ -183,10 +188,10 @@ if __name__ == "__main__":
         {
             "vecenv_type": "RLGPU",
             "env_creator": lambda **kwargs: task_architect(
-                cli_args.headless,
-                rl_config["device"],
-                cli_args.num_envs,
-                cli_args.play,
+                headless=cli_args.headless,
+                device=rl_config["device"],
+                num_envs=cli_args.num_envs,
+                playing=cli_args.play,
                 config={},
             ),
         },
@@ -194,10 +199,10 @@ if __name__ == "__main__":
     vecenv.register(
         "RLGPU",
         lambda config_name, num_actors, **kwargs: task_architect(
-            cli_args.headless,
-            rl_config["device"],
-            num_actors,
-            cli_args.play,
+            headless=cli_args.headless,
+            device=rl_config["device"],
+            num_envs=num_actors,
+            playing=cli_args.play,
             config={},
         ),
     )
@@ -228,6 +233,7 @@ if __name__ == "__main__":
     obs_num = obs_shape[0]
     dummy_input = torch.zeros(obs_shape, device=rl_config["device"])
 
+
     # Simplified network for actor inference
     # Tested for continuous_a2c_logstd
     class ActorModel(torch.nn.Module):
@@ -239,6 +245,7 @@ if __name__ == "__main__":
             x = self.a2c_network.actor_mlp(x)
             x = self.a2c_network.mu(x)
             return x
+
 
     model = ActorModel(player.model.a2c_network)
 

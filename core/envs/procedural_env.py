@@ -10,8 +10,8 @@ from core.terrain.terrain import TerrainBuilder
 
 
 class ProceduralEnv(BaseEnv):
-    def __init__(self, world_settings, num_envs, terrain_builders) -> None:
-        super().__init__(world_settings, num_envs, terrain_builders)
+    def __init__(self, world_settings, num_envs, terrain_builders, randomization_settings) -> None:
+        super().__init__(world_settings, num_envs, terrain_builders, randomization_settings)
 
         self.agent_positions = torch.zeros(self.num_envs, 3)
 

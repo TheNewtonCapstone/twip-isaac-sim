@@ -1,4 +1,4 @@
-randomize: False
+randomize: True
 randomization_params:
   frequency: 200   # Define how many environment steps between generating new randomizations
   color: True

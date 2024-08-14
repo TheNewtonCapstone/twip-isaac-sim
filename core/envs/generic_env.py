@@ -13,8 +13,9 @@ class GenericEnv(BaseEnv):
     def __init__(self, world_settings, num_envs, terrain_builders, randomization_settings):
         super().__init__(
             world_settings,
-            num_envs=num_envs,
-            randomization_settings=randomization_settings,
+            num_envs,
+            terrain_builders,
+            randomization_settings,
         )
         self.randomize = randomization_settings.get("randomize", False)
         self.randomization_params = randomization_settings.get("randomization_params", {})
