@@ -41,7 +41,6 @@ class ProceduralEnv(BaseEnv):
             ]
         ).tolist()
 
-        terrain_paths = []
         agent_batch_qty = int(math.ceil(self.num_envs / num_terrains))
 
         from core.utils.physics import raycast
@@ -54,7 +53,7 @@ class ProceduralEnv(BaseEnv):
 
             terrain = terrain_builder.build_from_self(stage, terrain_spawn_position)
 
-            terrain_paths.append(terrain.path)
+            self.terrain_paths.append(terrain.path)
 
             # propagate physics changes
             self.world.reset()
@@ -109,7 +108,7 @@ class ProceduralEnv(BaseEnv):
             physicsscene_path="/physicsScene",
             collision_root_path="/collisionGroups",
             prim_paths=agent_paths,
-            global_paths=["/World/groundPlane"] + terrain_paths,
+            global_paths=["/World/groundPlane"] + self.terrain_paths,
         )
         cloner.clone(
             source_prim_path=base_agent_path,
@@ -134,9 +133,40 @@ class ProceduralEnv(BaseEnv):
             }
         )
 
+        if self.randomize:
+            from core.domain_randomizer.domain_randomizer import DomainRandomizer
+
+            self.domain_randomizer = DomainRandomizer(
+                self.world, self.num_envs, self.twip_art_view, self.randomization_params
+            )
+
+            print("Domain randomizer initialized")
+            self.domain_randomizer.apply_randomization()
+
         return base_agent_path
 
     def step(self, actions: torch.Tensor, render: bool) -> torch.Tensor:
+        if self.randomize:
+            self.domain_randomizer.step_randomization()
+
+            def randomize_terrain_properties():
+                from core.utils.physics import set_physics_properties
+                from random import Random
+
+                print("Randomizing terrain properties")
+
+                rnd = Random()
+                for terrain_path in self.terrain_paths:
+                    set_physics_properties(
+                        terrain_path,
+                        dynamic_friction=rnd.uniform(0.3, 0.6),
+                        static_friction=rnd.uniform(0.3, 0.6),
+                        restitution=rnd.uniform(0.6, 1.0),
+                    )
+
+            if self.domain_randomizer.frame_idx % self.domain_randomizer.frequency == 0:
+                randomize_terrain_properties()
+
         # apply actions to the cloned agents
         self._apply_actions(actions)
 
@@ -163,8 +193,6 @@ class ProceduralEnv(BaseEnv):
 
         # we assume it's a full reset
         if indices is None:
-            print("FULL RESET")
-
             self.world.reset()  # reset the world too, because we're doing a full reset
 
             indices = torch.arange(self.num_envs)

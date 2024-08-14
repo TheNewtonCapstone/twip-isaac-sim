@@ -13,9 +13,6 @@ class GenericEnv(BaseEnv):
     def __init__(self, world_settings, num_envs, terrain_builders, randomization_settings):
         super().__init__(world_settings, num_envs, terrain_builders, randomization_settings)
 
-        self.randomize = randomization_settings.get("randomize", False)
-        self.randomization_params = randomization_settings.get("randomization_params", {})
-
     def construct(self, agent: BaseAgent) -> bool:
         super().construct(agent)
 
@@ -75,25 +72,21 @@ class GenericEnv(BaseEnv):
             print("Domain randomizer initialized")
             self.domain_randomizer.apply_randomization()
 
-        self.frame_idx = 0
-
         return self.base_agent_path
 
     def step(self, actions: torch.Tensor, render: bool) -> torch.Tensor:
+        if self.randomize:
+            self.domain_randomizer.step_randomization()
+
         self._apply_actions(actions)
 
         if not render:
             self.world.app.update()
 
-        if self.randomize:
-            self.domain_randomizer.step_randomization()
-
         self.world.step(render=render)
 
         self.imu.update(self.world.get_physics_dt())
         obs = self._gather_imus_frame()
-
-        self.frame_idx += 1
 
         return obs
 

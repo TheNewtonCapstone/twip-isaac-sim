@@ -3,6 +3,7 @@ from typing import Dict, Type, Union
 import torch
 
 from core.base.base_agent import BaseAgent
+from core.domain_randomizer.domain_randomizer import DomainRandomizer
 from core.terrain.terrain import TerrainBuilder
 
 
@@ -25,9 +26,14 @@ class BaseEnv(ABC):
         self.world = None
         self.agent = None
         self.terrain_builders = terrain_builders
+        self.terrain_paths = []
         self.randomization_settings = randomization_settings
         self.world_settings = world_settings
         self.num_envs = num_envs
+
+        self.domain_randomizer: DomainRandomizer = None
+        self.randomize = randomization_settings.get("randomize", False)
+        self.randomization_params = randomization_settings.get("randomization_params", {})
 
     @abstractmethod
     def construct(self, agent: BaseAgent) -> str:
