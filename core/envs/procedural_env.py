@@ -159,9 +159,9 @@ class ProceduralEnv(BaseEnv):
                 for terrain_path in self.terrain_paths:
                     set_physics_properties(
                         terrain_path,
-                        dynamic_friction=rnd.uniform(0.3, 0.6),
-                        static_friction=rnd.uniform(0.3, 0.6),
-                        restitution=rnd.uniform(0.6, 1.0),
+                        dynamic_friction=rnd.uniform(0.3, 0.7),
+                        static_friction=rnd.uniform(0.3, 0.7),
+                        restitution=rnd.uniform(0.0, 0.2),
                     )
 
             if self.domain_randomizer.frame_idx % self.domain_randomizer.frequency == 0:

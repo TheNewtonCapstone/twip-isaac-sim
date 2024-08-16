@@ -149,14 +149,14 @@ if __name__ == "__main__":
         return GenericEnv(
             world_settings=world_config,
             num_envs=cli_args.num_envs,
-            terrain_builders=[FlatTerrainBuilder()],
+            terrain_builders=[FlatTerrainBuilder(size=[10, 10])],
             randomization_settings=randomization_config,
         )
 
 
     def procedural_env_factory() -> ProceduralEnv:
         terrains_size = [10, 10]
-        terrains_resolution = [16, 16]
+        terrains_resolution = [20, 20]
 
         return ProceduralEnv(
             world_settings=world_config,
@@ -180,7 +180,7 @@ if __name__ == "__main__":
                 PerlinTerrainBuilder(
                     size=terrains_size,
                     resolution=terrains_resolution,
-                    height=0.01,
+                    height=0.02,
                     octave=16,
                     noise_scale=8
                 ),
