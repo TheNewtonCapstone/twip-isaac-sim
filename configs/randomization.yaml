@@ -16,12 +16,12 @@ randomization_params:
         additive:
           
           orientation:
-            range: [[-0.5, 0.5], [-0.5, 0.5], [-0.1, 0.1]]
+            range: [[-0.2, 0.2], [-0.3, 0.3], [-0.1, 0.1]]
             distribution: "uniform"
             setup_only: False
           
           velocity:
-            range: [[-1, 1], [-2, 2], [-0.1, 0.1], [-0.05, 0.05], [-0.05, 0.05], [-0.05, 0.05]]
+            range: [[-1, 1], [-1, 1], [-0.1, 0.1], [-0.05, 0.05], [-0.2, 0.2], [-0.05, 0.05]]
             distribution: "uniform"
             setup_only: False
           
