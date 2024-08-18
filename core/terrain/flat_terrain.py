@@ -61,7 +61,7 @@ class FlatTerrainBuilder(TerrainBuilder):
 
         from core.utils.physics import set_physics_properties
 
-        set_physics_properties(terrain_path)
+        set_physics_properties(terrain_path, restitution=0.1)
 
         return FlatTerrainBuild(
             stage,

@@ -1,6 +1,6 @@
 randomize: True
 randomization_params:
-  frequency: 200   # Define how many environment steps between generating new randomizations
+  frequency: 256   # Define how many environment steps between generating new randomizations
   color: True
 
   # The following parameters are used to randomize the environment
@@ -36,10 +36,7 @@ randomization_params:
             distribution: "uniform"
             setup_only: False
 
-          max_efforts:
-            range: [0.9, 1.1]
-            distribution: "uniform"
-            setup_only: False
+          
           
       dof_properties:
         scaling:
@@ -53,5 +50,9 @@ randomization_params:
             distribution: "uniform"
             setup_only: False
 
+          max_efforts:
+            range: [0.6, 1]
+            distribution: "uniform"
+            setup_only: False
 
 
