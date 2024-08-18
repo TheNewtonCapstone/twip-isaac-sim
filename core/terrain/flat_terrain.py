@@ -31,40 +31,36 @@ class FlatTerrainBuilder(TerrainBuilder):
         """
 
         return self.build(
-            stage,
-            self.size,
-            self.resolution,
-            self.height,
-            position,
-            self.base_path
+            stage, self.size, self.resolution, self.height, position, self.base_path
         )
 
     @staticmethod
-    def build(stage, size=None, resolution=None, height=0, position=None, path="/World/terrains") -> FlatTerrainBuild:
+    def build(
+        stage,
+        size=None,
+        resolution=None,
+        height=0,
+        position=None,
+        path="/World/terrains",
+    ) -> FlatTerrainBuild:
         """
         Notes:
             Resolution and height are not used for flat terrain.
         """
 
         if size is None:
-            size = [2, 2]
+            size = [20, 20]
         if position is None:
             position = [0, 0, 0]
 
         heightmap = torch.tensor([[0.0] * 2] * 2)
 
         terrain_path = TerrainBuilder._add_heightmap_to_world(
-            heightmap,
-            size,
-            2,
-            2,
-            height,
-            path,
-            "flat",
-            position
+            heightmap, size, 2, 2, height, path, "flat", position
         )
 
         from core.utils.physics import set_physics_properties
+
         set_physics_properties(terrain_path)
 
         return FlatTerrainBuild(

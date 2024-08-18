@@ -6,6 +6,7 @@ from typing import Dict, Any, Tuple, Callable
 from core.base.base_task import BaseTask
 from core.base.base_env import BaseEnv
 from core.base.base_agent import BaseAgent
+from core.utils.logger import DataLogger
 
 
 # should be called BalancingTwipTask
@@ -80,10 +81,15 @@ class GenericTask(BaseTask):
         )
 
     def construct(self) -> bool:
-        self.env = self.playing_env_factory() if self.playing else self.training_env_factory()
+        self.env = (
+            self.playing_env_factory() if self.playing else self.training_env_factory()
+        )
         self.agent = self.agent_factory()
 
         self.env.construct(self.agent)
+
+        self.data_logger = DataLogger(log_path="./twip_data.json")
+        self.data_logger.setup()
 
         return True
 
@@ -145,6 +151,11 @@ class GenericTask(BaseTask):
         # clears the last 2 observations & the progress if the twips are reset
         self.obs_buf[resets, :] = 0.0
         self.progress_buf[resets] = 0
+
+        log_data = self.obs_buf[0].clone()
+        log_data = torch.cat((log_data, actions[0]), dim=0)
+
+        # self.data_logger.info(log_data.tolist())
 
         return (
             {"obs": self.obs_buf},
@@ -242,7 +253,7 @@ def roll_from_quat(q: torch.Tensor) -> torch.Tensor:
 
     w, x, y, z = q[:, 0], q[:, 1], q[:, 2], q[:, 3]
 
-    roll = torch.arctan2(2 * (w * x + y * z), 1 - 2 * (x ** 2 + y ** 2))
+    roll = torch.arctan2(2 * (w * x + y * z), 1 - 2 * (x**2 + y**2))
     # pitch = torch.arcsin(2 * (w * y - z * x))
     # yaw = torch.arctan2(2 * (w * z + x * y), 1 - 2 * (y**2 + z**2))
 
