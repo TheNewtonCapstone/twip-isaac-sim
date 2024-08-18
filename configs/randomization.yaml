@@ -15,19 +15,19 @@ randomization_params:
       articulation_view_properties:
         additive:
           
-          # orientation:
-          #   range: [[-0.1, 0.1], [-0.1, 0.1], [-0.1, 0.1]]
-          #   distribution: "uniform"
-          #   setup_only: False
+          orientation:
+            range: [[-0.5, 0.5], [-0.5, 0.5], [-0.1, 0.1]]
+            distribution: "uniform"
+            setup_only: False
           
           velocity:
-            range: [[-0.1, 0.1], [-2, 2], [-0.1, 0.1], [-0.05, 0.05], [-0.05, 0.05], [-0.05, 0.05]]
+            range: [[-1, 1], [-2, 2], [-0.1, 0.1], [-0.05, 0.05], [-0.05, 0.05], [-0.05, 0.05]]
             distribution: "uniform"
             setup_only: False
           
         scaling:
           body_masses:
-            range: [0.8, 1.2]
+            range: [0.6, 1.4]
             distribution: "uniform"
             setup_only: False
           
@@ -44,12 +44,12 @@ randomization_params:
       dof_properties:
         scaling:
           joint_friction:
-            range: [0.8, 1.2]
+            range: [0.6, 1.4]
             distribution: "uniform"
             setup_only: False
 
           joint_velocities:
-            range: [-0.1, 0.1]
+            range: [-0.3, 0.3]
             distribution: "uniform"
             setup_only: False
 
