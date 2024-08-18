@@ -11,14 +11,7 @@ from core.domain_randomizer.domain_randomizer import DomainRandomizer
 # TODO: should be called GenericTwipEnv
 class GenericEnv(BaseEnv):
     def __init__(self, world_settings, num_envs, terrain_builders, randomization_settings):
-        super().__init__(
-            world_settings,
-            num_envs,
-            terrain_builders,
-            randomization_settings,
-        )
-        self.randomize = randomization_settings.get("randomize", False)
-        self.randomization_params = randomization_settings.get("randomization_params", {})
+        super().__init__(world_settings, num_envs, terrain_builders, randomization_settings)
 
     def construct(self, agent: BaseAgent) -> bool:
         super().construct(agent)
@@ -30,7 +23,7 @@ class GenericEnv(BaseEnv):
         from omni.isaac.core.utils.prims import define_prim
 
         # add a ground plane
-        self.terrain_builders[0].build(get_current_stage())
+        self.terrain_builders[0].build_from_self(get_current_stage(), [0, 0, 0])
 
         # clone the agent
         cloner = GridCloner(spacing=1)
@@ -82,6 +75,9 @@ class GenericEnv(BaseEnv):
         return self.base_agent_path
 
     def step(self, actions: torch.Tensor, render: bool) -> torch.Tensor:
+        if self.randomize:
+            self.domain_randomizer.step_randomization()
+
         self._apply_actions(actions)
 
         if not render:
@@ -96,7 +92,6 @@ class GenericEnv(BaseEnv):
         obs = self._gather_imus_frame()
 
         return obs
-
 
     def reset(
         self,

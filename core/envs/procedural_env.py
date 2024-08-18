@@ -29,20 +29,21 @@ class ProceduralEnv(BaseEnv):
 
         stage = get_current_stage()
         num_terrains = len(self.terrain_builders)
-        terrains_size = [10, 10]
-        terrains_resolution = [20, 20]
-        terrains_height = 0.05
+        terrains_size = self.terrain_builders[0].size
 
         # generates a list of positions for each of the terrains, in a grid pattern
+        perf_num_terrains_side = math.ceil(math.sqrt(num_terrains))
         terrain_positions = torch.tensor(
             [
-                [i * terrains_size[0] - terrains_size[0] / 2, j * terrains_size[1] - terrains_size[1] / 2, 0]
+                [
+                    (i % perf_num_terrains_side) * terrains_size[0] - terrains_size[0] / 2,
+                    (i // perf_num_terrains_side) * terrains_size[1] - terrains_size[1] / 2,
+                    0
+                ]
                 for i in range(num_terrains)
-                for j in range(num_terrains)
             ]
         ).tolist()
 
-        terrain_paths = []
         agent_batch_qty = int(math.ceil(self.num_envs / num_terrains))
 
         from core.utils.physics import raycast
@@ -51,28 +52,25 @@ class ProceduralEnv(BaseEnv):
         for i, terrain_builder in enumerate(self.terrain_builders):
             terrain_spawn_position = terrain_positions[i]
 
-            terrain = terrain_builder.build(
-                stage,
-                terrains_size,
-                terrains_resolution,
-                terrains_height,
-                terrain_spawn_position,
-            )
+            assert terrain_builder.size == terrains_size, "All terrains must have the same size"
 
-            terrain_paths.append(terrain.path)
+            terrain = terrain_builder.build_from_self(stage, terrain_spawn_position)
+
+            self.terrain_paths.append(terrain.path)
 
             # propagate physics changes
             self.world.reset()
 
             # from the raycast, we can get the desired position of the agent to avoid clipping with the terrain
             raycast_height = 5
-            avg_ray_dist = 0
+            max_ray_test_dist = 100
+            min_ray_dist = max_ray_test_dist
             num_rays = 9
+            rays_side = math.isqrt(num_rays)
             ray_separation = 0.1
 
             for j in range(num_rays):
                 # we also want to cover a grid of rays on the xy-plane
-                rays_side = math.isqrt(num_rays)
                 start_x = -ray_separation * (rays_side / 2)
                 start_y = -ray_separation * (rays_side / 2)
                 ray_x = ray_separation * (j % rays_side) + start_x
@@ -81,10 +79,10 @@ class ProceduralEnv(BaseEnv):
                 _, _, dist = raycast(
                     [terrain_spawn_position[0] + ray_x, terrain_spawn_position[1] + ray_y, raycast_height],
                     [0, 0, -1],
-                    max_distance=10
+                    max_distance=max_ray_test_dist
                 )
 
-                avg_ray_dist += dist / num_rays
+                min_ray_dist = min(dist, min_ray_dist)
 
             # we want all agents to be evenly split across all terrains
             agent_batch_start = i * agent_batch_qty
@@ -92,7 +90,7 @@ class ProceduralEnv(BaseEnv):
 
             self.agent_positions[agent_batch_start:agent_batch_end, :] = torch.tensor(
                 # TODO: make it dependent on the agent's contact point
-                [terrain_spawn_position[0], terrain_spawn_position[1], raycast_height - avg_ray_dist + 0.115]
+                [terrain_spawn_position[0], terrain_spawn_position[1], raycast_height - min_ray_dist + 0.115]
             )
 
         # in some cases, ceil will give us more positions than we need
@@ -113,7 +111,7 @@ class ProceduralEnv(BaseEnv):
             physicsscene_path="/physicsScene",
             collision_root_path="/collisionGroups",
             prim_paths=agent_paths,
-            global_paths=["/World/groundPlane"] + terrain_paths,
+            global_paths=["/World/groundPlane"] + self.terrain_paths,
         )
         cloner.clone(
             source_prim_path=base_agent_path,
@@ -149,6 +147,27 @@ class ProceduralEnv(BaseEnv):
         return base_agent_path
 
     def step(self, actions: torch.Tensor, render: bool) -> torch.Tensor:
+        if self.randomize:
+            self.domain_randomizer.step_randomization()
+
+            def randomize_terrain_properties():
+                from core.utils.physics import set_physics_properties
+                from random import Random
+
+                print("Randomizing terrain properties")
+
+                rnd = Random()
+                for terrain_path in self.terrain_paths:
+                    set_physics_properties(
+                        terrain_path,
+                        dynamic_friction=rnd.uniform(0.3, 0.7),
+                        static_friction=rnd.uniform(0.3, 0.7),
+                        restitution=rnd.uniform(0.0, 0.2),
+                    )
+
+            if self.domain_randomizer.frame_idx % self.domain_randomizer.frequency == 0:
+                randomize_terrain_properties()
+
         # apply actions to the cloned agents
         self._apply_actions(actions)
 
@@ -178,8 +197,6 @@ class ProceduralEnv(BaseEnv):
 
         # we assume it's a full reset
         if indices is None:
-            print("FULL RESET")
-
             self.world.reset()  # reset the world too, because we're doing a full reset
 
             indices = torch.arange(self.num_envs)

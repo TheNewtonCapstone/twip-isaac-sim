@@ -132,7 +132,7 @@ class GenericTask(BaseTask):
 
         # the smaller the difference between current orientation and stable orientation, the higher the reward
         self.rewards_buf, episode_info = compute_rewards_twip(
-            twip_roll, twip_imu_obs[:, 5], actions
+            twip_roll, twip_imu_obs[:, 3], twip_imu_obs[:, 5], actions
         )
 
         env_info["episode"] = episode_info
@@ -185,6 +185,7 @@ class GenericTask(BaseTask):
 @torch.jit.script
 def compute_rewards_twip(
     roll: torch.Tensor,
+    ang_vel_x: torch.Tensor,
     ang_vel_z: torch.Tensor,
     actions: torch.Tensor,
 ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
@@ -193,29 +194,29 @@ def compute_rewards_twip(
     # returns: rewards
 
     # Compute rate of change of roll
-    roll_velocity = torch.diff(roll, dim=0, prepend=roll[:1])
+    roll_velocity = ang_vel_x
 
     # Normalized position (assume max distance is 5 units)
     # norm_position = torch.norm(position, dim=-1) / 5.0
 
     # Base reward for staying upright
-    upright_reward = 1.0 - torch.tanh(2 * torch.abs(roll))
+    #upright_reward = 1.0 - torch.tanh(2 * torch.abs(roll))
 
     # Penalties
-    roll_penalty = torch.tanh(3 * torch.abs(roll))
+    roll_penalty = torch.tanh(6 * torch.abs(roll))
     ang_vel_penalty = torch.tanh(2 * torch.abs(ang_vel_z))
-    action_penalty = torch.tanh(torch.sum(torch.abs(actions), dim=-1)) * 0.1
+    action_penalty = torch.tanh(torch.sum(torch.abs(actions), dim=-1)) * 0.2
     # position_penalty = torch.tanh(norm_position) * 0.2
-    roll_velocity_penalty = torch.tanh(2 * torch.abs(roll_velocity)) * 0.3
+    #roll_velocity_penalty = torch.tanh(2 * torch.abs(roll_velocity)) * 0.3
 
     # Compute rewards
     rewards = (
-        upright_reward
+        1.0
         - roll_penalty
         - ang_vel_penalty
         - action_penalty
         # - position_penalty
-        - roll_velocity_penalty
+        # - roll_velocity_penalty
     )
 
     # Time factor to encourage longer balancing (assuming time_step is in seconds)
@@ -223,7 +224,7 @@ def compute_rewards_twip(
     # rewards *= 1.0 + time_factor
 
     # Harsh penalty for falling
-    fall_penalty = torch.where(torch.abs(roll) > 0.26, -5.0, 0.0)
+    fall_penalty = torch.where(torch.abs(roll) > 0.5, -5.0, 0.0)
     rewards += fall_penalty
 
     episode = {
@@ -237,9 +238,9 @@ def compute_rewards_twip(
         # "position": torch.median(norm_position),
         # "position_penalty": torch.mean(position_penalty),
         "roll_velocity": torch.median(torch.abs(roll_velocity)),
-        "roll_velocity_penalty": torch.mean(roll_velocity_penalty),
+        # "roll_velocity_penalty": torch.mean(roll_velocity_penalty),
         # "time_factor": torch.mean(time_factor),
-        "upright_reward": torch.mean(upright_reward),
+        # "upright_reward": torch.mean(upright_reward),
     }
 
     return rewards, episode

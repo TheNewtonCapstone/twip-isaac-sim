@@ -23,7 +23,7 @@ def set_physics_properties(
     static_friction: float = 0.5,
     restitution: float = 0.8
 ) -> bool:
-    from omni.isaac.core.utils.prims import get_prim_at_path, define_prim
+    from omni.isaac.core.utils.prims import get_prim_at_path, define_prim, is_prim_path_valid
 
     target_prim = get_prim_at_path(target_prim_path)
 
@@ -33,10 +33,14 @@ def set_physics_properties(
     from pxr import UsdPhysics, UsdShade
 
     material_prim_path = f"{target_prim_path}/physics_material"
-    material_prim = define_prim(material_prim_path, "Material")
+
+    if not is_prim_path_valid(material_prim_path):
+        material_prim = define_prim(material_prim_path, "Material")
+    else:
+        material_prim = get_prim_at_path(material_prim_path)
 
     # if the material has already been bound to the target prim, just update the physics properties
-    if material_prim.HasAPI(UsdShade.MaterialBindingAPI):
+    if target_prim.HasAPI(UsdShade.MaterialBindingAPI):
         physics_material_api = get_or_apply_api(material_prim, UsdPhysics.MaterialAPI)
         physics_material_api.CreateDynamicFrictionAttr(dynamic_friction)
         physics_material_api.CreateStaticFrictionAttr(static_friction)
@@ -44,7 +48,7 @@ def set_physics_properties(
 
         return True
 
-    # otherwise, bind the material to the target prim
+    # otherwise, bind the material (not the material prim) to the target prim
     material = get_or_define_material(material_prim_path)
 
     material_binding_api = get_or_apply_api(target_prim, UsdShade.MaterialBindingAPI)
@@ -52,6 +56,11 @@ def set_physics_properties(
         material, bindingStrength=UsdShade.Tokens.weakerThanDescendants,
         materialPurpose="physics"
     )
+
+    physics_material_api = get_or_apply_api(material_prim, UsdPhysics.MaterialAPI)
+    physics_material_api.CreateDynamicFrictionAttr(dynamic_friction)
+    physics_material_api.CreateStaticFrictionAttr(static_friction)
+    physics_material_api.CreateRestitutionAttr(restitution)
 
     return True
 
