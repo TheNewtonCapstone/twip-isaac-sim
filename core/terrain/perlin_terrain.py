@@ -89,7 +89,7 @@ class PerlinTerrainBuilder(TerrainBuilder):
         )
 
         from core.utils.physics import set_physics_properties
-        set_physics_properties(terrain_path, restitution=0.1)
+        set_physics_properties(terrain_path,static_friction=1, dynamic_friction=1, restitution=0)
 
         return PerlinTerrainBuild(
             stage,

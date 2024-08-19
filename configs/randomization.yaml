@@ -51,7 +51,7 @@ randomization_params:
             setup_only: False
 
           max_efforts:
-            range: [0.6, 1]
+            range: [0.6, 1.0]
             distribution: "uniform"
             setup_only: False
 
