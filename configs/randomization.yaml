@@ -21,13 +21,13 @@ randomization_params:
             setup_only: False
           
           velocity:
-            range: [[-1, 1], [-1, 1], [-0.1, 0.1], [-0.05, 0.05], [-0.2, 0.2], [-0.05, 0.05]]
+            range: [[-0.5, 0.5], [-0.5, 0.5], [0, 0.1], [-0.05, 0.05], [-0.2, 0.2], [-0.05, 0.05]]
             distribution: "uniform"
             setup_only: False
           
         scaling:
           body_masses:
-            range: [0.6, 1.4]
+            range: [0.9, 1.1]
             distribution: "uniform"
             setup_only: False
           

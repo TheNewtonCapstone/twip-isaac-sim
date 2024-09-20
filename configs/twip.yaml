@@ -68,7 +68,7 @@ params:
     save_frequency: 64
 
     num_actors: 128
-    horizon_length: 256
+    horizon_length: 512
     minibatch_size: 512 # overriden by below parameter
     minibatch_size_per_env: 256
     mini_epochs: 4

@@ -216,7 +216,32 @@ class ProceduralEnv(BaseEnv):
             torch.zeros(num_to_reset, 2), indices=indices
         )
 
-                # orientation at rest for the agents
+        def euler_to_quat(euler: torch.Tensor) -> torch.Tensor:
+            from math import cos, sin
+
+            roll = euler[:, 0]
+            pitch = euler[:, 1]
+            yaw = euler[:, 2]
+
+            cy = cos(yaw * 0.5)
+            sy = sin(yaw * 0.5)
+            cp = cos(pitch * 0.5)
+            sp = sin(pitch * 0.5)
+            cr = cos(roll * 0.5)
+            sr = sin(roll * 0.5)
+
+            return torch.tensor(
+                [
+                    cy * cp * cr + sy * sp * sr,
+                    cy * cp * sr - sy * sp * cr,
+                    sy * cp * sr + cy * sp * cr,
+                    sy * cp * cr - cy * sp * sr,
+                ]
+            )
+
+        import random
+
+        # orientation at rest for the agents
         orientations = torch.tile(
             torch.tensor([0.98037, -0.18795, -0.01142, 0.05846]), (num_to_reset, 1)
         )
