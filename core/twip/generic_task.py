@@ -114,19 +114,21 @@ class GenericTask(BaseTask):
         env_info = self.get_env_info()
         self.progress_buf += 1
 
+        import random
+
         # shape of twip_imu_obs: (num_envs, 10)
         # (:, 0:3) -> linear acceleration
         # (:, 3:6) -> angular velocity
         # (:, 6:10) -> quaternion (WXYZ)
-        twip_imu_obs = self.env.step(actions, render=not self.headless).to(
+        twip_imu_obs = self.env.step(actions * random.gauss(1.0, 0.065), render=not self.headless).to(
             device=self.device
         )  # is on GPU, so all subsequent calculations will be on GPU
 
         # get the roll angle only
-        twip_roll = roll_from_quat(twip_imu_obs[:, 6:10])
+        twip_roll = roll_from_quat(twip_imu_obs[:, 6:10]) * random.gauss(1.0, 0.065)
 
         self.obs_buf[:, 0] = twip_roll
-        self.obs_buf[:, 1] = twip_imu_obs[:, 5]  # angular velocity on z-axis
+        self.obs_buf[:, 1] = twip_imu_obs[:, 5] * random.gauss(1.0, 0.065) # angular velocity on z-axis
         self.obs_buf[:, 2] = actions[:, 0]
         self.obs_buf[:, 3] = actions[:, 1]
 
