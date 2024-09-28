@@ -155,8 +155,8 @@ class GenericEnv(BaseEnv):
 
         return
 
-    def _apply_actions(self, actions: torch.Tensor) -> None:
-        self.twip_art_view.set_joint_efforts(actions)
+    def _apply_actions(self, torques: torch.Tensor) -> None:
+        self.twip_art_view.set_joint_efforts(torques)
 
     def _gather_imus_frame(self) -> torch.Tensor:
         imu_data = self.imu.data

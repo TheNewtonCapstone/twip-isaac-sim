@@ -1,3 +1,4 @@
+from time import time
 import gym
 import numpy as np
 import torch
@@ -18,6 +19,10 @@ class GenericTask(BaseTask):
         agent_factory: Callable[..., BaseAgent],
     ):
         super().__init__(training_env_factory, playing_env_factory, agent_factory)
+
+        # Temporary time
+        self.prev_time = 0.0
+        self.curr_time = 0.0
 
     def load_config(
         self,
@@ -88,7 +93,7 @@ class GenericTask(BaseTask):
 
         self.env.construct(self.agent)
 
-        self.data_logger = DataLogger(log_path="./twip_data.json")
+        self.data_logger = DataLogger(log_path="./twip_data.csv")
         self.data_logger.setup()
 
         return True
@@ -120,7 +125,7 @@ class GenericTask(BaseTask):
         # (:, 0:3) -> linear acceleration
         # (:, 3:6) -> angular velocity
         # (:, 6:10) -> quaternion (WXYZ)
-        twip_imu_obs = self.env.step(actions * random.gauss(1.0, 0.065), render=not self.headless).to(
+        twip_imu_obs = self.env.step(actions_to_torque(actions * random.gauss(1.0, 0.065)), render=not self.headless).to(
             device=self.device
         )  # is on GPU, so all subsequent calculations will be on GPU
 
@@ -183,6 +188,15 @@ class GenericTask(BaseTask):
 
         return {"obs": obs}
 
+@torch.jit.script
+def pwm_percent_to_torque(pwm_percent: torch.Tensor) -> torch.Tensor:
+    # if any pwm_percent is less than 0.375, return 0
+    # otherwise, return the torque
+    return torch.where(pwm_percent <= 0.375, 0.0, 0.653 + 0.507 * torch.log(pwm_percent))
+
+@torch.jit.script
+def actions_to_torque(actions: torch.Tensor) -> torch.Tensor:
+    return torch.sign(actions) * pwm_percent_to_torque(torch.abs(actions))
 
 @torch.jit.script
 def compute_rewards_twip(
@@ -207,7 +221,7 @@ def compute_rewards_twip(
     # Penalties
     roll_penalty = torch.tanh(6 * torch.abs(roll))
     ang_vel_penalty = torch.tanh(2 * torch.abs(ang_vel_z))
-    action_penalty = torch.tanh(torch.sum(torch.abs(actions), dim=-1)) * 0.2
+    action_penalty = torch.tanh(torch.sum(torch.abs(actions_to_torque(actions)), dim=-1)) * 0.2
     # position_penalty = torch.tanh(norm_position) * 0.2
     #roll_velocity_penalty = torch.tanh(2 * torch.abs(roll_velocity)) * 0.3
 
@@ -235,7 +249,7 @@ def compute_rewards_twip(
         "roll_penalty": torch.mean(roll_penalty),
         "ang_vel_z": torch.median(torch.abs(ang_vel_z)),
         "ang_vel_penalty": torch.mean(ang_vel_penalty),
-        "action_magnitude": torch.median(torch.sum(torch.abs(actions), dim=-1)),
+        "action_magnitude": torch.median(torch.sum(torch.abs(actions_to_torque(actions)), dim=-1)),
         "action_penalty": torch.mean(action_penalty),
         # "position": torch.median(norm_position),
         # "position_penalty": torch.mean(position_penalty),
