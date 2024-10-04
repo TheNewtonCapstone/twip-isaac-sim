@@ -2,7 +2,7 @@
 **/__pycache__/
 
 # Isaac Sim files
-_isaac_sim/
+_isaac_sim
 
 # Model Outputs
 runs/**
