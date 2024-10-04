@@ -1,8 +1,11 @@
 from abc import ABC, abstractmethod
-from typing import Dict
+from typing import Dict, Type, Union
 import torch
 
 from core.base.base_agent import BaseAgent
+from core.domain_randomizer.domain_randomizer import DomainRandomizer
+from core.terrain.terrain import TerrainBuilder
+
 
 # TODO: separate into 3 classes: BaseEnv, BaseTask, BaseAgent
 # BaseEnv: contains the world, agents and settings
@@ -17,9 +20,20 @@ class BaseEnv(ABC):
         self,
         world_settings: Dict,
         num_envs: int,
+        terrain_builders: list[TerrainBuilder],
+        randomization_settings: Dict,
     ) -> None:
+        self.world = None
+        self.agent = None
+        self.terrain_builders = terrain_builders
+        self.terrain_paths = []
+        self.randomization_settings = randomization_settings
         self.world_settings = world_settings
         self.num_envs = num_envs
+
+        self.domain_randomizer: DomainRandomizer = None
+        self.randomize = randomization_settings.get("randomize", False)
+        self.randomization_params = randomization_settings.get("randomization_params", {})
 
     @abstractmethod
     def construct(self, agent: BaseAgent) -> str:
@@ -43,7 +57,7 @@ class BaseEnv(ABC):
         # Adjust physics scene settings (mainly for GPU memory allocation)
         phys_context = self.world.get_physics_context()
         phys_context.set_gpu_found_lost_aggregate_pairs_capacity(
-            max(self.num_envs * 64, 1024)
+            max(self.num_envs ** 3, 1024)
         )  # 1024 is the default value, eyeballed the other value
         phys_context.set_gpu_total_aggregate_pairs_capacity(
             max(self.num_envs * 64, 1024)
@@ -58,7 +72,7 @@ class BaseEnv(ABC):
     @abstractmethod
     def step(self, actions: torch.Tensor, render: bool) -> torch.Tensor:
         self.world.step(render=render)
-        return None
+        return torch.zeros(0)
 
     @abstractmethod
     def reset(
@@ -66,5 +80,5 @@ class BaseEnv(ABC):
         indices: torch.Tensor = None,
     ) -> Dict[str, torch.Tensor]:
         self.world.reset()
+        return {"obs": torch.zeros(0)}
 
-        return None

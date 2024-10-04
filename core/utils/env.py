@@ -2,13 +2,14 @@ from typing import Callable, Type
 
 
 def base_task_architect(
-    env_factory: Callable,
+    training_env_factory: Callable,
+    playing_env_factory: Callable,
     agent_factory: Callable,
     task_class: Type,
 ):
-    def base_task_creator(headless: bool, device: str, num_envs: int):
-        task = task_class(env_factory, agent_factory)
-        task.load_config(headless, device, num_envs)
+    def base_task_creator(headless: bool, device: str, num_envs: int, playing: bool, config: dict):
+        task = task_class(training_env_factory, playing_env_factory, agent_factory)
+        task.load_config(headless, device, num_envs, playing, config=config)
         task.construct()
 
         print("Created", task)

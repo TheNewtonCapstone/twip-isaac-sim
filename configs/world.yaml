@@ -1,4 +1,4 @@
-physics_dt: 0.00500
+physics_dt: 0.01000
 stage_units_in_meters: 1.0
 rendering_dt: 0.01667
 backend: torch

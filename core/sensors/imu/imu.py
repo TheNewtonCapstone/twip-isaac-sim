@@ -10,7 +10,6 @@ from typing import Dict
 
 from core.sensors.imu.imu_data import IMUData
 from core.sensors.sensor_base import SensorBase
-from core.utils.usd import find_first_matching_prim
 import core.utils.math as math_utils
 
 
@@ -102,6 +101,7 @@ class IMU(SensorBase):
             RuntimeError: If the imu prim is not a RigidBodyPrim
         """
 
+        from core.utils.usd import find_first_matching_prim
         import omni.physics.tensors.impl.api as physx
         from pxr import UsdPhysics
 

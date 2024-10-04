@@ -12,14 +12,16 @@ from core.base.base_agent import BaseAgent
 class BaseTask(IVecEnv):
     def __init__(
         self,
-        env_factory: Callable[..., BaseEnv],
+        training_env_factory: Callable[..., BaseEnv],
+        playing_env_factory: Callable[..., BaseEnv],
         agent_factory: Callable[..., BaseAgent],
     ):
         self.config = {}
 
-        self.env_factory = env_factory
-        self.env: BaseEnv = None
+        self.training_env_factory = training_env_factory
+        self.playing_env_factory = playing_env_factory
         self.agent_factory = agent_factory
+
         self.agent: BaseAgent = None
         self.envs: List[BaseEnv] = []
 
@@ -28,12 +30,14 @@ class BaseTask(IVecEnv):
         headless: bool,
         device: str,
         num_envs: int,
-        config: Dict[str, Any] = {},
+        playing: bool,
+        config: Dict[str, Any],
     ) -> None:
         self.config: Dict[str, Any] = config
 
         self.headless: bool = headless
         self.device: str = device
+        self.playing: bool = playing
 
         self.num_envs: int = num_envs
         self.max_episode_length: int = self.config["max_episode_length"]
@@ -46,6 +50,8 @@ class BaseTask(IVecEnv):
         self.observation_space: gym.spaces.Box = self.config["observation_space"]
         self.action_space: gym.spaces.Box = self.config["action_space"]
         self.state_space: gym.spaces.Box = self.config["state_space"]
+
+        self.domain_randomization: bool = self.config.get("domain_randomization", False)
 
         self._setup_buffers()
 
@@ -93,7 +99,7 @@ class BaseTask(IVecEnv):
     def reset(self) -> Dict[str, torch.Tensor]:
         # resets a single environment
         # returns: the observations
-        return
+        pass
 
     def seed(self, seed) -> None:
         pass
