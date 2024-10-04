@@ -1,4 +1,12 @@
+# Python files
 **/__pycache__/
-runs/**
+
+# Isaac Sim files
 _isaac_sim/
+
+# Model Outputs
+runs/**
 outputs/**
+
+# Logs
+*.csv
