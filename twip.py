@@ -1,12 +1,13 @@
 import argparse
 import os
 
+import numpy as np
 import torch
 from core.envs.generic_env import GenericEnv
 from core.envs.procedural_env import ProceduralEnv
 from core.terrain.flat_terrain import FlatTerrainBuilder
 from core.terrain.perlin_terrain import PerlinTerrainBuilder
-from core.twip.generic_task import GenericTask
+from core.twip.generic_task import GenericTask, GenericCallback
 from core.twip.twip_agent import TwipAgent
 from core.utils.config import load_config
 from core.utils.path import get_current_path, build_child_path_with_prefix
@@ -90,33 +91,58 @@ if __name__ == "__main__":
     world_config = load_config(cli_args.world_config)
     randomization_config = load_config(cli_args.randomization_config)
 
-    # override config with CLI args & vice versa
+    simulating = cli_args.sim_only
+    exporting = cli_args.export_onnx
+    playing = not exporting and cli_args.play
+    training = not exporting and not cli_args.play
+    headless = (
+        cli_args.headless or cli_args.export_onnx
+    )  # if we're exporting, don't show the GUI
+
+    assert (
+        playing or exporting
+    ) and cli_args.checkpoint is not None, (
+        "Please provide a checkpoint to play/export the agent."
+    )
+
+    # override config with CLI num_envs, if specified
     if cli_args.num_envs != -1:
         rl_config["n_envs"] = cli_args.num_envs
+    elif not training:
+        rl_config["n_envs"] = 1
 
-        print(
-            f"Updated the following parameters: num_envs={rl_config['params']['config']['num_actors']}"
-        )
+    if playing:
+        # increase the number of steps if we're playing
+        rl_config["ppo"]["n_steps"] *= 4
 
-    if cli_args.play and cli_args.checkpoint is None:
-        print("Please provide a checkpoint to play the agent.")
-        exit(1)
+        # force the physics device to CPU if we're playing
+        world_config["device"] = "cpu"
 
-    # if we're exporting, don't show the GUI
-    cli_args.headless = cli_args.headless or cli_args.export_onnx
+    # ensure proper config reading when encountering None
+    if rl_config["ppo"]["clip_range_vf"] == "None":
+        rl_config["ppo"]["clip_range_vf"] = None
+
+    if rl_config["ppo"]["target_kl"] == "None":
+        rl_config["ppo"]["target_kl"] = None
+
+    print(
+        f"Running with {rl_config['n_envs']} environments, {rl_config['ppo']['n_steps']} steps per environment, and {'headless' if headless else 'GUI'} mode.\n",
+        f"{'Exporting ONNX' if exporting else 'Playing' if playing else 'Training'}.\n",
+        f"Using {rl_config['device']} as the RL device and {world_config['device']} as the physics device.",
+    )
 
     sim_app = SimulationApp(
-        {"headless": cli_args.headless}, experience="./apps/omni.isaac.sim.twip.kit"
+        {"headless": headless}, experience="./apps/omni.isaac.sim.twip.kit"
     )
 
     # ---------- #
     # SIMULATION #
     # ---------- #
 
-    if cli_args.sim_only:
+    if simulating:
         env = ProceduralEnv(
             world_settings=world_config,
-            num_envs=1,
+            num_envs=rl_config["n_envs"],
             terrain_builders=[PerlinTerrainBuilder(), FlatTerrainBuilder()],
             randomization_settings=randomization_config,
         )
@@ -128,7 +154,7 @@ if __name__ == "__main__":
 
         while sim_app.is_running():
             if env.world.is_playing():
-                env.step(torch.zeros(env.num_envs, 2), render=not cli_args.headless)
+                env.step(torch.zeros(env.num_envs, 2), render=not headless)
 
     # ----------- #
     #     RL      #
@@ -184,60 +210,68 @@ if __name__ == "__main__":
         rl_config["task_name"], task_runs_directory
     )
 
+    # task used for either training or playing
     task = GenericTask(
         headless=cli_args.headless,
         device=rl_config["device"],
         num_envs=rl_config["n_envs"],
-        playing=cli_args.play,
+        playing=playing,
         max_episode_length=rl_config["ppo"]["n_steps"],
         domain_randomization=randomization_config,
         training_env_factory=procedural_env_factory,
         playing_env_factory=generic_env_factory,
         agent_factory=twip_agent_factory,
     )
+    callback = GenericCallback()
+
     task.construct()
 
-    model = PPO(
-        rl_config["policy"],
-        task,
-        verbose=2,
-        device=rl_config["device"],
-        seed=rl_config["seed"],
-        learning_rate=float(rl_config["base_lr"]),
-        n_steps=rl_config["ppo"]["n_steps"],
-        batch_size=rl_config["ppo"]["batch_size"],
-        n_epochs=rl_config["ppo"]["n_epochs"],
-        gamma=rl_config["ppo"]["gamma"],
-        gae_lambda=rl_config["ppo"]["gae_lambda"],
-        clip_range=float(rl_config["ppo"]["clip_range"]),
-        clip_range_vf=(
-            None
-            if rl_config["ppo"]["clip_range_vf"] == "None"
-            else float(rl_config["ppo"]["clip_range_vf"])
-        ),
-        ent_coef=rl_config["ppo"]["ent_coef"],
-        vf_coef=rl_config["ppo"]["vf_coef"],
-        max_grad_norm=rl_config["ppo"]["max_grad_norm"],
-        use_sde=rl_config["ppo"]["use_sde"],
-        sde_sample_freq=rl_config["ppo"]["sde_sample_freq"],
-        target_kl=(
-            None
-            if rl_config["ppo"]["target_kl"] == "None"
-            else float(rl_config["ppo"]["target_kl"])
-        ),
-        tensorboard_log=task_runs_directory,
-    )
-
     # we're not exporting nor purely simulating, so we're training
-    if not cli_args.export_onnx:
+    if training:
+        model = PPO(
+            rl_config["policy"],
+            task,
+            verbose=2,
+            device=rl_config["device"],
+            seed=rl_config["seed"],
+            learning_rate=float(rl_config["base_lr"]),
+            n_steps=rl_config["ppo"]["n_steps"],
+            batch_size=rl_config["ppo"]["batch_size"],
+            n_epochs=rl_config["ppo"]["n_epochs"],
+            gamma=rl_config["ppo"]["gamma"],
+            gae_lambda=rl_config["ppo"]["gae_lambda"],
+            clip_range=float(rl_config["ppo"]["clip_range"]),
+            clip_range_vf=rl_config["ppo"]["clip_range_vf"],
+            ent_coef=rl_config["ppo"]["ent_coef"],
+            vf_coef=rl_config["ppo"]["vf_coef"],
+            max_grad_norm=rl_config["ppo"]["max_grad_norm"],
+            use_sde=rl_config["ppo"]["use_sde"],
+            sde_sample_freq=rl_config["ppo"]["sde_sample_freq"],
+            target_kl=rl_config["ppo"]["target_kl"],
+            tensorboard_log=task_runs_directory,
+        )
+
         model.learn(
             total_timesteps=rl_config["timesteps_per_env"] * rl_config["n_envs"],
             tb_log_name=task_name,
+            reset_num_timesteps=False,
             progress_bar=True,
+            callback=callback,
         )
-        model.save(f"{task_runs_directory}/{task_name}/model.zip")
+        model.save(f"{task_runs_directory}/{task_name}_1/model.zip")
 
         exit(1)
+
+    if playing:
+        model = PPO.load(cli_args.checkpoint)
+
+        actions = model.predict(task.reset()[0], deterministic=True)[0]
+        actions = np.array([actions])  # make sure we have a 2D tensor
+
+        while sim_app.is_running():
+            if task.env.world.is_playing():
+                step_return = task.step(actions)
+                actions = model.predict(step_return[0], deterministic=True)[0]
 
     # ----------- #
     #    ONNX     #

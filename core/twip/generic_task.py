@@ -6,7 +6,29 @@ import torch
 from core.base.base_agent import BaseAgent
 from core.base.base_env import BaseEnv
 from core.base.base_task import BaseTask
+from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.vec_env.base_vec_env import VecEnvStepReturn, VecEnvObs
+
+
+class GenericCallback(BaseCallback):
+    def __init__(self):
+        super().__init__(verbose=2)
+
+    def _on_step(self) -> bool:
+        task: GenericTask = self.training_env
+
+        self.logger.record("rewards/mean", task.rewards_buf.mean().item())
+        self.logger.record("rewards/median", torch.median(task.rewards_buf).item())
+
+        self.logger.record("metrics/roll_mean", task.obs_buf[:, 0].mean().item())
+        self.logger.record("metrics/ang_vel_mean", task.obs_buf[:, 1].mean().item())
+
+        combined_actions = torch.sum(torch.abs(task.actions_buf), dim=-1)
+        self.logger.record(
+            "metrics/action_magnitude_mean", combined_actions.mean().item()
+        )
+
+        return True
 
 
 # should be called BalancingTwipTask
