@@ -1,0 +1,30 @@
+task_name: "twip_balancing"
+device: "cuda"
+policy: "MlpPolicy"
+seed: 12341
+
+n_envs: 64
+timesteps_per_env: 100_000
+base_lr: 3e-4
+
+ppo:
+  n_steps: 512
+  batch_size: 256
+  n_epochs: 4
+
+  gamma: 0.99
+  gae_lambda: 0.95
+
+  clip_range: 0.2
+  clip_range_vf: None
+
+  normalize_advantage: True
+
+  ent_coef: 0.0
+  vf_coef: 0.5
+
+  max_grad_norm: 0.5
+  use_sde: False
+  sde_sample_freq: -1
+
+  target_kl: None

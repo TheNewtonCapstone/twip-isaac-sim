@@ -1,22 +1,23 @@
-import torch
 import numpy as np
-
+import torch
 from core.base.base_agent import BaseAgent
 from core.base.base_env import BaseEnv
-from core.sensors.imu.imu import IMU
-from core.twip.twip_agent import TwipAgent
 from core.domain_randomizer.domain_randomizer import DomainRandomizer
+from core.sensors.imu.imu import IMU
 
 
 # TODO: should be called GenericTwipEnv
 class GenericEnv(BaseEnv):
-    def __init__(self, world_settings, num_envs, terrain_builders, randomization_settings):
-        super().__init__(world_settings, num_envs, terrain_builders, randomization_settings)
+    def __init__(
+        self, world_settings, num_envs, terrain_builders, randomization_settings
+    ):
+        super().__init__(
+            world_settings, num_envs, terrain_builders, randomization_settings
+        )
 
     def construct(self, agent: BaseAgent) -> bool:
         super().construct(agent)
 
-        import omni.isaac.core
         from omni.isaac.cloner import GridCloner
         from omni.isaac.core.articulations import ArticulationView
         from omni.isaac.core.utils.stage import get_current_stage
@@ -84,9 +85,6 @@ class GenericEnv(BaseEnv):
             self.world.app.update()
 
         self.world.step(render=render)
-        
-        if self.randomize:
-            self.domain_randomizer.step_randomization()
 
         self.imu.update(self.world.get_physics_dt())
         obs = self._gather_imus_frame()
@@ -163,4 +161,4 @@ class GenericEnv(BaseEnv):
 
         return torch.cat(
             (imu_data.lin_acc_b, imu_data.ang_vel_b, imu_data.quat_w), dim=1
-        )
+        ).to(device="cpu")

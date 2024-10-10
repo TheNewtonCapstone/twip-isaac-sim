@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Type, Union
-import torch
+from typing import Dict
 
+import GPUtil
+import torch
 from core.base.base_agent import BaseAgent
 from core.domain_randomizer.domain_randomizer import DomainRandomizer
 from core.terrain.terrain import TerrainBuilder
@@ -33,13 +34,14 @@ class BaseEnv(ABC):
 
         self.domain_randomizer: DomainRandomizer = None
         self.randomize = randomization_settings.get("randomize", False)
-        self.randomization_params = randomization_settings.get("randomization_params", {})
+        self.randomization_params = randomization_settings.get(
+            "randomization_params", {}
+        )
 
     @abstractmethod
     def construct(self, agent: BaseAgent) -> str:
         self.agent = agent  # save the agent class for informative purposes (i.e. introspection/debugging)
 
-        import omni.isaac.core
         from omni.isaac.core import World
         from omni.isaac.core.utils.stage import get_current_stage
         from pxr import Sdf, UsdLux
@@ -54,14 +56,19 @@ class BaseEnv(ABC):
             device=self.world_settings["device"],
         )
 
+        devices = GPUtil.getGPUs()
+        assert len(devices) > 0, "No GPU devices found"
+
+        main_device: GPUtil.GPU = devices[0]
+        free_device_memory = main_device.memoryFree
+        assert free_device_memory > 0, "No free GPU memory found"
+
         # Adjust physics scene settings (mainly for GPU memory allocation)
         phys_context = self.world.get_physics_context()
         phys_context.set_gpu_found_lost_aggregate_pairs_capacity(
-            max(self.num_envs ** 3, 1024)
-        )  # 1024 is the default value, eyeballed the other value
-        phys_context.set_gpu_total_aggregate_pairs_capacity(
-            max(self.num_envs * 64, 1024)
-        )  # 1024 is the default value, eyeballed the other value
+            free_device_memory // 5 * 3
+        )  # there should be more contacts than overall pairs
+        phys_context.set_gpu_total_aggregate_pairs_capacity(free_device_memory // 5 * 2)
 
         # Add sun
         sun = UsdLux.DistantLight.Define(stage, Sdf.Path("/distantLight"))
@@ -77,8 +84,7 @@ class BaseEnv(ABC):
     @abstractmethod
     def reset(
         self,
-        indices: torch.Tensor = None,
+        indices: torch.LongTensor | None = None,
     ) -> Dict[str, torch.Tensor]:
         self.world.reset()
         return {"obs": torch.zeros(0)}
-

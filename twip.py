@@ -1,25 +1,17 @@
-from datetime import datetime
-import os
-import torch
-
 import argparse
-import numpy as np
+import os
 
-from isaacsim import SimulationApp
-from rl_games.torch_runner import Runner
-from rl_games.common.algo_observer import IsaacAlgoObserver
-from rl_games.common import env_configurations, vecenv
-
+import torch
 from core.envs.generic_env import GenericEnv
 from core.envs.procedural_env import ProceduralEnv
-from core.terrain.world_plane_terrain import DefaultGroundPlaneBuilder
 from core.terrain.flat_terrain import FlatTerrainBuilder
 from core.terrain.perlin_terrain import PerlinTerrainBuilder
-from core.twip.twip_agent import TwipAgent
 from core.twip.generic_task import GenericTask
-from core.utils.env import base_task_architect
-from core.utils.path import get_current_path
+from core.twip.twip_agent import TwipAgent
 from core.utils.config import load_config
+from core.utils.path import get_current_path, build_child_path_with_prefix
+from isaacsim import SimulationApp
+from stable_baselines3 import PPO
 
 twip_settings = {
     "twip_urdf_path": os.path.join(
@@ -48,7 +40,7 @@ def setup_argparser() -> argparse.ArgumentParser:
         "--rl-config",
         type=str,
         help="Path to the configuration file for RL.",
-        default="configs/twip.yaml",
+        default="configs/task_twip.yaml",
     )
     parser.add_argument(
         "--world-config",
@@ -99,20 +91,18 @@ if __name__ == "__main__":
     randomization_config = load_config(cli_args.randomization_config)
 
     # override config with CLI args & vice versa
-    if cli_args.num_envs == -1:
-        cli_args.num_envs = rl_config["params"]["config"]["num_actors"]
-    else:
-        rl_config["params"]["config"]["num_actors"] = cli_args.num_envs
+    if cli_args.num_envs != -1:
+        rl_config["n_envs"] = cli_args.num_envs
 
-    print(
-        f"Updated the following parameters: num_envs={rl_config['params']['config']['num_actors']}"
-    )
+        print(
+            f"Updated the following parameters: num_envs={rl_config['params']['config']['num_actors']}"
+        )
 
     if cli_args.play and cli_args.checkpoint is None:
         print("Please provide a checkpoint to play the agent.")
         exit(1)
 
-    # if we're exporting, don't show it
+    # if we're exporting, don't show the GUI
     cli_args.headless = cli_args.headless or cli_args.export_onnx
 
     sim_app = SimulationApp(
@@ -126,9 +116,9 @@ if __name__ == "__main__":
     if cli_args.sim_only:
         env = ProceduralEnv(
             world_settings=world_config,
-            num_envs=cli_args.num_envs,
+            num_envs=1,
             terrain_builders=[PerlinTerrainBuilder(), FlatTerrainBuilder()],
-            randomization_settings=randomization_config
+            randomization_settings=randomization_config,
         )
 
         twip = TwipAgent(twip_settings)
@@ -138,21 +128,19 @@ if __name__ == "__main__":
 
         while sim_app.is_running():
             if env.world.is_playing():
-                env.step(torch.zeros(env.num_envs, 2), render=cli_args.headless)
-
+                env.step(torch.zeros(env.num_envs, 2), render=not cli_args.headless)
 
     # ----------- #
-    # RL TRAINING #
+    #     RL      #
     # ----------- #
 
     def generic_env_factory() -> GenericEnv:
         return GenericEnv(
             world_settings=world_config,
-            num_envs=cli_args.num_envs,
+            num_envs=rl_config["n_envs"],
             terrain_builders=[FlatTerrainBuilder(size=[10, 10])],
             randomization_settings=randomization_config,
         )
-
 
     def procedural_env_factory() -> ProceduralEnv:
         terrains_size = [10, 10]
@@ -160,7 +148,7 @@ if __name__ == "__main__":
 
         return ProceduralEnv(
             world_settings=world_config,
-            num_envs=cli_args.num_envs,
+            num_envs=rl_config["n_envs"],
             terrain_builders=[
                 FlatTerrainBuilder(size=terrains_size),
                 PerlinTerrainBuilder(
@@ -168,129 +156,121 @@ if __name__ == "__main__":
                     resolution=terrains_resolution,
                     height=0.05,
                     octave=4,
-                    noise_scale=2
+                    noise_scale=2,
                 ),
                 PerlinTerrainBuilder(
                     size=terrains_size,
                     resolution=terrains_resolution,
                     height=0.03,
                     octave=8,
-                    noise_scale=4
+                    noise_scale=4,
                 ),
                 PerlinTerrainBuilder(
                     size=terrains_size,
                     resolution=terrains_resolution,
                     height=0.02,
                     octave=16,
-                    noise_scale=8
+                    noise_scale=8,
                 ),
             ],
             randomization_settings=randomization_config,
         )
 
-
     def twip_agent_factory() -> TwipAgent:
         return TwipAgent(twip_settings)
 
-
-    rl_config["params"]["config"]["full_experiment_name"] = (
-        rl_config["params"]["config"]["full_experiment_name"]
-        + "_"
-        + datetime.now().strftime("%y%m%d%H%M%S")
+    task_runs_directory = "runs"
+    task_name = build_child_path_with_prefix(
+        rl_config["task_name"], task_runs_directory
     )
 
-    task_architect = base_task_architect(
-        procedural_env_factory,
-        generic_env_factory,
-        twip_agent_factory,
-        GenericTask,
+    task = GenericTask(
+        headless=cli_args.headless,
+        device=rl_config["device"],
+        num_envs=rl_config["n_envs"],
+        playing=cli_args.play,
+        max_episode_length=rl_config["ppo"]["n_steps"],
+        domain_randomization=randomization_config,
+        training_env_factory=procedural_env_factory,
+        playing_env_factory=generic_env_factory,
+        agent_factory=twip_agent_factory,
     )
+    task.construct()
 
-    # registers task creation function with RL Games
-    env_configurations.register(
-        "generic",
-        {
-            "vecenv_type": "RLGPU",
-            "env_creator": lambda **kwargs: task_architect(
-                headless=cli_args.headless,
-                device=rl_config["device"],
-                num_envs=cli_args.num_envs,
-                playing=cli_args.play,
-                config={},
-            ),
-        },
-    )
-    vecenv.register(
-        "RLGPU",
-        lambda config_name, num_actors, **kwargs: task_architect(
-            headless=cli_args.headless,
-            device=rl_config["device"],
-            num_envs=num_actors,
-            playing=cli_args.play,
-            config={},
+    model = PPO(
+        rl_config["policy"],
+        task,
+        verbose=2,
+        device=rl_config["device"],
+        seed=rl_config["seed"],
+        learning_rate=float(rl_config["base_lr"]),
+        n_steps=rl_config["ppo"]["n_steps"],
+        batch_size=rl_config["ppo"]["batch_size"],
+        n_epochs=rl_config["ppo"]["n_epochs"],
+        gamma=rl_config["ppo"]["gamma"],
+        gae_lambda=rl_config["ppo"]["gae_lambda"],
+        clip_range=float(rl_config["ppo"]["clip_range"]),
+        clip_range_vf=(
+            None
+            if rl_config["ppo"]["clip_range_vf"] == "None"
+            else float(rl_config["ppo"]["clip_range_vf"])
         ),
+        ent_coef=rl_config["ppo"]["ent_coef"],
+        vf_coef=rl_config["ppo"]["vf_coef"],
+        max_grad_norm=rl_config["ppo"]["max_grad_norm"],
+        use_sde=rl_config["ppo"]["use_sde"],
+        sde_sample_freq=rl_config["ppo"]["sde_sample_freq"],
+        target_kl=(
+            None
+            if rl_config["ppo"]["target_kl"] == "None"
+            else float(rl_config["ppo"]["target_kl"])
+        ),
+        tensorboard_log=task_runs_directory,
     )
-
-    runner = Runner(IsaacAlgoObserver())
-    runner.load(rl_config)
 
     # we're not exporting nor purely simulating, so we're training
     if not cli_args.export_onnx:
-        runner.reset()
-        runner.run(
-            {
-                "train": not cli_args.play,
-                "play": cli_args.play,
-                "checkpoint": cli_args.checkpoint,
-            }
+        model.learn(
+            total_timesteps=rl_config["timesteps_per_env"] * rl_config["n_envs"],
+            tb_log_name=task_name,
+            progress_bar=True,
         )
+        model.save(f"{task_runs_directory}/{task_name}/model.zip")
 
         exit(1)
 
+    # ----------- #
+    #    ONNX     #
+    # ----------- #
+
     # Load model from checkpoint
-    player = runner.create_player()
-    player.restore(cli_args.checkpoint)
+    model = PPO.load(cli_args.checkpoint)
 
     # Create dummy observations tensor for tracing torch model
-    obs_shape = player.obs_shape
-    actions_num = player.actions_num
-    obs_num = obs_shape[0]
-    dummy_input = torch.zeros(obs_shape, device=rl_config["device"])
-
+    obs_shape = model.observation_space.shape
+    dummy_input = torch.rand((1, *obs_shape))
 
     # Simplified network for actor inference
     # Tested for continuous_a2c_logstd
-    class ActorModel(torch.nn.Module):
-        def __init__(self, a2c_network):
+    class OnnxablePolicy(torch.nn.Module):
+        def __init__(self, actor: torch.nn.Module):
             super().__init__()
-            self.a2c_network = a2c_network
+            self.actor = actor
 
-        def forward(self, x):
-            x = self.a2c_network.actor_mlp(x)
-            x = self.a2c_network.mu(x)
-            return x
+        def forward(
+            self,
+            observation: torch.Tensor,
+        ):
+            return self.actor(observation, deterministic=True)
 
-
-    model = ActorModel(player.model.a2c_network)
-
-    # Since rl_games uses dicts, we can flatten the inputs and outputs of the model: see https://github.com/Denys88/rl_games/issues/92
-    # Not necessary with the custom ActorModel defined above, but code is included here if needed
+    onnxable_model = OnnxablePolicy(model.policy.actor)
     torch.onnx.export(
-        model,
+        onnxable_model,
         dummy_input,
         f"{cli_args.checkpoint}.onnx",
         verbose=True,
         input_names=["observations"],
         output_names=["actions"],
     )  # outputs are mu (actions), sigma, value
-    traced = torch.jit.trace(model, dummy_input, check_trace=True)
-    flattened_outputs = traced(dummy_input)
 
     print(f"Exported to {cli_args.checkpoint}.onnx!")
-
-    # Print dummy output and model output (make sure these have the same values)
-    print("Flattened outputs: ", flattened_outputs)
-    print(model.forward(dummy_input))
-
-    print("# Observations: ", obs_num)
-    print("# Actions: ", actions_num)

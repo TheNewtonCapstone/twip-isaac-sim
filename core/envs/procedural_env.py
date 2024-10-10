@@ -1,27 +1,29 @@
 import math
 
 import torch
-import numpy as np
-
 from core.base.base_agent import BaseAgent
 from core.base.base_env import BaseEnv
 from core.domain_randomizer.domain_randomizer import DomainRandomizer
 from core.sensors.imu.imu import IMU
-from core.terrain.terrain import TerrainBuilder
 
 
 class ProceduralEnv(BaseEnv):
-    def __init__(self, world_settings, num_envs, terrain_builders, randomization_settings) -> None:
-        super().__init__(world_settings, num_envs, terrain_builders, randomization_settings)
+    def __init__(
+        self, world_settings, num_envs, terrain_builders, randomization_settings
+    ) -> None:
+        super().__init__(
+            world_settings, num_envs, terrain_builders, randomization_settings
+        )
 
         self.agent_positions = torch.zeros(self.num_envs, 3)
         self.randomize = randomization_settings.get("randomize", False)
-        self.randomization_params = randomization_settings.get("randomization_params", {})
+        self.randomization_params = randomization_settings.get(
+            "randomization_params", {}
+        )
 
     def construct(self, agent: BaseAgent) -> bool:
         super().construct(agent)
 
-        import omni.isaac.core
         from omni.isaac.cloner import Cloner
         from omni.isaac.core.articulations import ArticulationView
         from omni.isaac.core.utils.stage import get_current_stage
@@ -36,9 +38,11 @@ class ProceduralEnv(BaseEnv):
         terrain_positions = torch.tensor(
             [
                 [
-                    (i % perf_num_terrains_side) * terrains_size[0] - terrains_size[0] / 2,
-                    (i // perf_num_terrains_side) * terrains_size[1] - terrains_size[1] / 2,
-                    0
+                    (i % perf_num_terrains_side) * terrains_size[0]
+                    - terrains_size[0] / 2,
+                    (i // perf_num_terrains_side) * terrains_size[1]
+                    - terrains_size[1] / 2,
+                    0,
                 ]
                 for i in range(num_terrains)
             ]
@@ -52,7 +56,9 @@ class ProceduralEnv(BaseEnv):
         for i, terrain_builder in enumerate(self.terrain_builders):
             terrain_spawn_position = terrain_positions[i]
 
-            assert terrain_builder.size == terrains_size, "All terrains must have the same size"
+            assert (
+                terrain_builder.size == terrains_size
+            ), "All terrains must have the same size"
 
             terrain = terrain_builder.build_from_self(stage, terrain_spawn_position)
 
@@ -77,9 +83,13 @@ class ProceduralEnv(BaseEnv):
                 ray_y = ray_separation * (j // rays_side) + start_y
 
                 _, _, dist = raycast(
-                    [terrain_spawn_position[0] + ray_x, terrain_spawn_position[1] + ray_y, raycast_height],
+                    [
+                        terrain_spawn_position[0] + ray_x,
+                        terrain_spawn_position[1] + ray_y,
+                        raycast_height,
+                    ],
                     [0, 0, -1],
-                    max_distance=max_ray_test_dist
+                    max_distance=max_ray_test_dist,
                 )
 
                 min_ray_dist = min(dist, min_ray_dist)
@@ -90,7 +100,11 @@ class ProceduralEnv(BaseEnv):
 
             self.agent_positions[agent_batch_start:agent_batch_end, :] = torch.tensor(
                 # TODO: make it dependent on the agent's contact point
-                [terrain_spawn_position[0], terrain_spawn_position[1], raycast_height - min_ray_dist + 0.115]
+                [
+                    terrain_spawn_position[0],
+                    terrain_spawn_position[1],
+                    raycast_height - min_ray_dist + 0.115,
+                ]
             )
 
         # in some cases, ceil will give us more positions than we need
@@ -143,7 +157,6 @@ class ProceduralEnv(BaseEnv):
             print("Domain randomizer initialized")
             self.domain_randomizer.apply_randomization()
 
-
         return base_agent_path
 
     def step(self, actions: torch.Tensor, render: bool) -> torch.Tensor:
@@ -179,9 +192,6 @@ class ProceduralEnv(BaseEnv):
             self.world.app.update()
 
         self.world.step(render=render)
-
-        if self.randomize:
-            self.domain_randomizer.step_randomization()
 
         # get observations from the cloned agents
         self.imu.update(self.world.get_physics_dt())
@@ -239,8 +249,6 @@ class ProceduralEnv(BaseEnv):
                 ]
             )
 
-        import random
-
         # orientation at rest for the agents
         orientations = torch.tile(
             torch.tensor([0.98037, -0.18795, -0.01142, 0.05846]), (num_to_reset, 1)
@@ -267,30 +275,4 @@ class ProceduralEnv(BaseEnv):
         imu_data = self.imu.data
         return torch.cat(
             (imu_data.lin_acc_b, imu_data.ang_vel_b, imu_data.quat_w), dim=1
-        )
-
-        from omni.isaac.sensor import _sensor
-
-        i_imu = _sensor.acquire_imu_sensor_interface()
-
-        imus_frame = torch.zeros(self.num_envs, 10)
-
-        for i, imu_path in enumerate(self.agent_imu_paths):
-            imu_data = i_imu.get_sensor_reading(imu_path)
-            imus_frame[i, :] = torch.tensor(
-                [
-                    imu_data.lin_acc_x,
-                    imu_data.lin_acc_y,
-                    imu_data.lin_acc_z,
-                    imu_data.ang_vel_x,
-                    imu_data.ang_vel_y,
-                    imu_data.ang_vel_z,
-                    # the quaternion is stored in WXYZ format in rest of Isaac
-                    imu_data.orientation[3],
-                    imu_data.orientation[0],
-                    imu_data.orientation[1],
-                    imu_data.orientation[2],
-                ],
-            )
-
-        return imus_frame
+        ).to(device="cpu")
