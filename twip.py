@@ -5,14 +5,25 @@ import numpy as np
 import torch
 from core.envs.generic_env import GenericEnv
 from core.envs.procedural_env import ProceduralEnv
+from core.pid.pid import PidController
 from core.terrain.flat_terrain import FlatTerrainBuilder
 from core.terrain.perlin_terrain import PerlinTerrainBuilder
-from core.twip.generic_task import GenericTask, GenericCallback
+from core.twip.generic_task import (
+    GenericTask,
+    GenericCallback,
+    actions_to_torque,
+    roll_from_quat,
+)
 from core.twip.twip_agent import TwipAgent
 from core.utils.config import load_config
-from core.utils.path import get_current_path, build_child_path_with_prefix
+from core.utils.path import (
+    get_current_path,
+    build_child_path_with_prefix,
+    get_folder_from_path,
+)
 from isaacsim import SimulationApp
 from stable_baselines3 import PPO
+from stable_baselines3.common.policies import BasePolicy
 
 twip_settings = {
     "twip_urdf_path": os.path.join(
@@ -35,6 +46,12 @@ def setup_argparser() -> argparse.ArgumentParser:
         "--sim-only",
         action="store_true",
         help="Run the simulation only (no RL).",
+        default=False,
+    )
+    parser.add_argument(
+        "--pid-control",
+        action="store_true",
+        help="Run the simulation with pid control (no RL).",
         default=False,
     )
     parser.add_argument(
@@ -93,17 +110,12 @@ if __name__ == "__main__":
 
     simulating = cli_args.sim_only
     exporting = cli_args.export_onnx
-    playing = not exporting and cli_args.play
-    training = not exporting and not cli_args.play
+    pidding = not exporting and cli_args.pid_control
+    playing = not exporting and not pidding and cli_args.play
+    training = not exporting and not pidding and not cli_args.play
     headless = (
         cli_args.headless or cli_args.export_onnx
     )  # if we're exporting, don't show the GUI
-
-    assert (
-        playing or exporting
-    ) and cli_args.checkpoint is not None, (
-        "Please provide a checkpoint to play/export the agent."
-    )
 
     # override config with CLI num_envs, if specified
     if cli_args.num_envs != -1:
@@ -115,7 +127,8 @@ if __name__ == "__main__":
         # increase the number of steps if we're playing
         rl_config["ppo"]["n_steps"] *= 4
 
-        # force the physics device to CPU if we're playing
+    if playing or pidding:
+        # force the physics device to CPU if we're playing or pidding (for better control)
         world_config["device"] = "cpu"
 
     # ensure proper config reading when encountering None
@@ -127,13 +140,63 @@ if __name__ == "__main__":
 
     print(
         f"Running with {rl_config['n_envs']} environments, {rl_config['ppo']['n_steps']} steps per environment, and {'headless' if headless else 'GUI'} mode.\n",
-        f"{'Exporting ONNX' if exporting else 'Playing' if playing else 'Training'}.\n",
+        f"{'Exporting ONNX' if exporting else 'Playing' if playing else 'Training' if training else 'Pidding'}.\n",
         f"Using {rl_config['device']} as the RL device and {world_config['device']} as the physics device.",
     )
 
     sim_app = SimulationApp(
         {"headless": headless}, experience="./apps/omni.isaac.sim.twip.kit"
     )
+
+    # ----------- #
+    # PID CONTROL #
+    # ----------- #
+
+    if pidding:
+        controller = PidController(
+            kp=1.55,
+            kd=0.1,
+            ki=0.15,
+            min_output=-1.0,
+            max_output=1.0,
+            max_integral=2.0,
+            setpoint=0.0,
+        )
+
+        randomization_config["randomize"] = False
+
+        env = GenericEnv(
+            world_settings=world_config,
+            num_envs=rl_config["n_envs"],
+            terrain_builders=[FlatTerrainBuilder()],
+            randomization_settings=randomization_config,
+        )
+
+        twip = TwipAgent(twip_settings)
+
+        env.construct(twip)
+        env.reset()
+
+        actions = torch.zeros(env.num_envs, 2)
+        log_file = open("pidding.csv", "w")
+        print("time,dt,roll,action1,action2", file=log_file)
+
+        while sim_app.is_running():
+            if env.world.is_playing():
+                imu_data = env.step(actions, render=not headless)
+                roll = roll_from_quat(imu_data[:, 6:10]).item()
+
+                dt = env.world.get_physics_dt()
+                actions = controller.predict(roll, dt)
+
+                actions = actions_to_torque(actions)
+
+                print(
+                    f"{env.world.current_time},{dt},{roll},{actions[0]},{actions[1]}",
+                    file=log_file,
+                )
+
+        exit(1)
 
     # ---------- #
     # SIMULATION #
@@ -155,6 +218,8 @@ if __name__ == "__main__":
         while sim_app.is_running():
             if env.world.is_playing():
                 env.step(torch.zeros(env.num_envs, 2), render=not headless)
+
+        exit(1)
 
     # ----------- #
     #     RL      #
@@ -251,6 +316,9 @@ if __name__ == "__main__":
             tensorboard_log=task_runs_directory,
         )
 
+        if cli_args.checkpoint is not None:
+            model = PPO.load(cli_args.checkpoint, task, device=rl_config["device"])
+
         model.learn(
             total_timesteps=rl_config["timesteps_per_env"] * rl_config["n_envs"],
             tb_log_name=task_name,
@@ -268,36 +336,48 @@ if __name__ == "__main__":
         actions = model.predict(task.reset()[0], deterministic=True)[0]
         actions = np.array([actions])  # make sure we have a 2D tensor
 
+        log_file = open(f"{get_folder_from_path(cli_args.checkpoint)}/playing.csv", "w")
+        print("time,dt,roll,action1,action2", file=log_file)
+
         while sim_app.is_running():
             if task.env.world.is_playing():
                 step_return = task.step(actions)
-                actions = model.predict(step_return[0], deterministic=True)[0]
+                observations = step_return[0]
+                actions = model.predict(observations, deterministic=True)[0]
+
+                torque_actions = actions_to_torque(torch.from_numpy(actions[0]))
+                print(
+                    f"{task.env.world.current_time},{task.env.world.get_physics_dt()},{observations[0][0]},{torque_actions[0]},{torque_actions[1]}",
+                    file=log_file,
+                )
+
+        exit(1)
 
     # ----------- #
     #    ONNX     #
     # ----------- #
 
     # Load model from checkpoint
-    model = PPO.load(cli_args.checkpoint)
+    model = PPO.load(cli_args.checkpoint, device="cpu")
 
     # Create dummy observations tensor for tracing torch model
     obs_shape = model.observation_space.shape
-    dummy_input = torch.rand((1, *obs_shape))
+    dummy_input = torch.rand((1, *obs_shape), device="cpu")
 
     # Simplified network for actor inference
     # Tested for continuous_a2c_logstd
     class OnnxablePolicy(torch.nn.Module):
-        def __init__(self, actor: torch.nn.Module):
+        def __init__(self, policy: BasePolicy):
             super().__init__()
-            self.actor = actor
+            self.policy = policy
 
         def forward(
             self,
             observation: torch.Tensor,
         ):
-            return self.actor(observation, deterministic=True)
+            return self.policy(observation, deterministic=True)
 
-    onnxable_model = OnnxablePolicy(model.policy.actor)
+    onnxable_model = OnnxablePolicy(model.policy)
     torch.onnx.export(
         onnxable_model,
         dummy_input,

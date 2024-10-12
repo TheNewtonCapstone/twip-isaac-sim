@@ -19,6 +19,7 @@ class GenericCallback(BaseCallback):
 
         self.logger.record("rewards/mean", task.rewards_buf.mean().item())
         self.logger.record("rewards/median", torch.median(task.rewards_buf).item())
+        self.logger.record("rewards/sum", task.rewards_buf.sum().item())
 
         self.logger.record("metrics/roll_mean", task.obs_buf[:, 0].mean().item())
         self.logger.record("metrics/ang_vel_mean", task.obs_buf[:, 1].mean().item())
@@ -27,6 +28,10 @@ class GenericCallback(BaseCallback):
         self.logger.record(
             "metrics/action_magnitude_mean", combined_actions.mean().item()
         )
+
+        # save the model intermittently
+        if self.model.num_timesteps % (64 * task.num_envs) == 0:
+            self.model.save(f"{self.logger.dir}/model_{self.model.num_timesteps}.zip")
 
         return True
 
@@ -127,6 +132,13 @@ class GenericTask(BaseTask):
 
         self.progress_buf += 1
 
+        # Ensure that the actions are within the action space
+        self.actions_buf = torch.clamp(
+            self.actions_buf,
+            torch.from_numpy(self.action_space.low),
+            torch.from_numpy(self.action_space.high),
+        )
+
         import random
 
         # shape of twip_imu_obs: (num_envs, 10)
@@ -151,6 +163,13 @@ class GenericTask(BaseTask):
         # the smaller the difference between current orientation and stable orientation, the higher the reward
         self.rewards_buf, episode_info = compute_rewards_twip(
             twip_roll, twip_imu_obs[:, 3], twip_imu_obs[:, 5], self.actions_buf
+        )
+
+        # Clip rewards to the specified range
+        self.rewards_buf = torch.clamp(
+            self.rewards_buf,
+            torch.from_numpy(self.reward_space.low),
+            torch.from_numpy(self.reward_space.high),
         )
 
         # process failures (when falling)
@@ -181,14 +200,25 @@ def pwm_percent_to_torque(pwm_percent: torch.Tensor) -> torch.Tensor:
     # if any pwm_percent is less than 0.375, return 0
     # otherwise, return the torque
     # this follows empirical data
-    return torch.where(
-        pwm_percent <= 0.375, 0.0, 0.653 + 0.507 * torch.log(pwm_percent)
-    )
+    return 0.653 + 0.507 * torch.log(pwm_percent)
 
 
 @torch.jit.script
 def actions_to_torque(actions: torch.Tensor) -> torch.Tensor:
-    return torch.sign(actions) * pwm_percent_to_torque(torch.abs(actions))
+    # store the sign for later (for directions)
+    actions_sign = torch.sign(actions)
+
+    # map the actions to the PWM range [0.375, 1.0]
+    actions = torch.abs(actions)
+    actions = actions * 0.625 + 0.375
+
+    # convert the PWM to torque
+    actions = pwm_percent_to_torque(actions)
+
+    # apply the sign, for directions
+    actions = actions * actions_sign
+
+    return actions
 
 
 @torch.jit.script
@@ -208,14 +238,11 @@ def compute_rewards_twip(
     # Normalized position (assume max distance is 5 units)
     # norm_position = torch.norm(position, dim=-1) / 5.0
 
-    # Base reward for staying upright
-    # upright_reward = 1.0 - torch.tanh(2 * torch.abs(roll))
-
     # Penalties
     roll_penalty = torch.tanh(6 * torch.abs(roll))
     ang_vel_penalty = torch.tanh(2 * torch.abs(ang_vel_z))
     action_penalty = (
-        torch.tanh(torch.sum(torch.abs(actions_to_torque(actions)), dim=-1)) * 0.2
+        torch.tanh(torch.sum(torch.square(actions_to_torque(actions)), dim=-1)) * 0.2
     )
     # position_penalty = torch.tanh(norm_position) * 0.2
     # roll_velocity_penalty = torch.tanh(2 * torch.abs(roll_velocity)) * 0.3
@@ -235,8 +262,7 @@ def compute_rewards_twip(
     # rewards *= 1.0 + time_factor
 
     # Harsh penalty for falling
-    fall_penalty = torch.where(torch.abs(roll) > 0.5, -5.0, 0.0)
-    rewards += fall_penalty
+    rewards = torch.where(torch.abs(roll) > 0.5, -2.0, rewards)
 
     episode = {
         "roll": torch.median(torch.abs(roll)),
@@ -244,9 +270,7 @@ def compute_rewards_twip(
         "roll_penalty": torch.mean(roll_penalty),
         "ang_vel_z": torch.median(torch.abs(ang_vel_z)),
         "ang_vel_penalty": torch.mean(ang_vel_penalty),
-        "action_magnitude": torch.median(
-            torch.sum(torch.abs(actions_to_torque(actions)), dim=-1)
-        ),
+        "action_magnitude": torch.median(torch.sum(torch.abs(actions), dim=-1)),
         "action_penalty": torch.mean(action_penalty),
         # "position": torch.median(norm_position),
         # "position_penalty": torch.mean(position_penalty),

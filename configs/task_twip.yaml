@@ -1,16 +1,16 @@
 task_name: "twip_balancing"
 device: "cuda"
 policy: "MlpPolicy"
-seed: 12341
+seed: 14321
 
-n_envs: 64
-timesteps_per_env: 100_000
-base_lr: 2e-4
+n_envs: 128
+timesteps_per_env: 1_000_000
+base_lr: 1e-4
 
 ppo:
   n_steps: 512
   batch_size: 256
-  n_epochs: 4
+  n_epochs: 5
 
   gamma: 0.99
   gae_lambda: 0.95

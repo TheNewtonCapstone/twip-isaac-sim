@@ -29,3 +29,6 @@ def build_full_path_with_prefix(prefix: str, parent_folder: str) -> str:
     num_folders = get_num_folders_with_prefix(prefix, parent_folder)
 
     return os.path.join(parent_folder, f"{prefix}_{num_folders:03d}")
+
+def get_folder_from_path(file_path: str) -> str:
+    return os.path.dirname(file_path)
