@@ -159,6 +159,8 @@ class GenericEnv(BaseEnv):
     def _gather_imus_frame(self) -> torch.Tensor:
         imu_data = self.imu.data
 
+        # to(cpu) because the simulation may run on GPU and we want to eventually pass this data to STB3
+        # which uses numpy arrays (on CPU)
         return torch.cat(
             (imu_data.lin_acc_b, imu_data.ang_vel_b, imu_data.quat_w), dim=1
         ).to(device="cpu")
