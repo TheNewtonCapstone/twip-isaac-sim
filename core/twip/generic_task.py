@@ -1,50 +1,56 @@
-from time import time
+from typing import Dict, Any, Tuple, Callable
+
 import gym
 import numpy as np
 import torch
-from typing import Dict, Any, Tuple, Callable
-
-from core.base.base_task import BaseTask
-from core.base.base_env import BaseEnv
 from core.base.base_agent import BaseAgent
-from core.utils.logger import DataLogger
+from core.base.base_env import BaseEnv
+from core.base.base_task import BaseTask
+from stable_baselines3.common.callbacks import BaseCallback
+from stable_baselines3.common.vec_env.base_vec_env import VecEnvStepReturn, VecEnvObs
+
+
+class GenericCallback(BaseCallback):
+    def __init__(self):
+        super().__init__(verbose=2)
+
+    def _on_step(self) -> bool:
+        task: GenericTask = self.training_env
+
+        self.logger.record("rewards/mean", task.rewards_buf.mean().item())
+        self.logger.record("rewards/median", torch.median(task.rewards_buf).item())
+        self.logger.record("rewards/sum", task.rewards_buf.sum().item())
+
+        self.logger.record("metrics/roll_mean", task.obs_buf[:, 0].mean().item())
+        self.logger.record("metrics/ang_vel_mean", task.obs_buf[:, 1].mean().item())
+
+        combined_actions = torch.sum(torch.abs(task.actions_buf), dim=-1)
+        self.logger.record(
+            "metrics/action_magnitude_mean", combined_actions.mean().item()
+        )
+
+        # save the model intermittently
+        if self.model.num_timesteps % (64 * task.num_envs) == 0:
+            self.model.save(f"{self.logger.dir}/model_{self.model.num_timesteps}.zip")
+
+        return True
 
 
 # should be called BalancingTwipTask
 class GenericTask(BaseTask):
     def __init__(
         self,
-        training_env_factory: Callable[..., BaseEnv],
-        playing_env_factory: Callable[..., BaseEnv],
-        agent_factory: Callable[..., BaseAgent],
-    ):
-        super().__init__(training_env_factory, playing_env_factory, agent_factory)
-
-        # Temporary time
-        self.prev_time = 0.0
-        self.curr_time = 0.0
-
-    def load_config(
-        self,
         headless: bool,
         device: str,
         num_envs: int,
         playing: bool,
-        config: Dict[str, Any],
-        domain_rand: bool = False,
-    ) -> None:
-        config["device"] = device
-        config["headless"] = headless
-
-        config["num_envs"] = num_envs
-        config["max_episode_length"] = 512
-
-        config["num_agents"] = 1
-        config["num_observations"] = 4
-        config["num_actions"] = 2
-        config["num_states"] = 0
-
-        config["observation_space"] = gym.spaces.Box(
+        max_episode_length: int,
+        domain_randomization: Dict[str, Any],
+        training_env_factory: Callable[..., BaseEnv],
+        playing_env_factory: Callable[..., BaseEnv],
+        agent_factory: Callable[..., BaseAgent],
+    ):
+        observation_space = gym.spaces.Box(
             low=np.array(
                 [
                     -np.pi,
@@ -62,27 +68,30 @@ class GenericTask(BaseTask):
                 ]
             ),
         )
-        config["action_space"] = gym.spaces.Box(
-            np.ones(config["num_actions"]) * -1.0,
-            np.ones(config["num_actions"]) * 1.0,
-        )
-        config["state_space"] = gym.spaces.Box(
-            np.ones(config["num_states"]) * -np.Inf,
-            np.ones(config["num_states"]) * np.Inf,
+
+        num_actions = 2
+        action_space = gym.spaces.Box(
+            low=np.ones(num_actions) * -1.0,
+            high=np.ones(num_actions) * 1.0,
         )
 
-        # task-specific config
-        config["domain_randomization"] = domain_rand
-        self.frame_idx = 0
+        reward_space = gym.spaces.Box(
+            low=np.array([-1.0]),
+            high=np.array([1.0]),
+        )
 
-        print(f"{self.__class__.__name__} loaded config {config}")
-
-        super().load_config(
+        super().__init__(
             headless=headless,
             device=device,
             num_envs=num_envs,
             playing=playing,
-            config=config,
+            max_episode_length=max_episode_length,
+            observation_space=observation_space,
+            action_space=action_space,
+            reward_space=reward_space,
+            training_env_factory=training_env_factory,
+            playing_env_factory=playing_env_factory,
+            agent_factory=agent_factory,
         )
 
     def construct(self) -> bool:
@@ -93,31 +102,42 @@ class GenericTask(BaseTask):
 
         self.env.construct(self.agent)
 
-        self.data_logger = DataLogger(log_path="./twip_data.csv")
-        self.data_logger.setup()
-
         return True
 
-    # RL-Games methods (required from IVecEnv)
-    def step(
-        self, actions: torch.Tensor = None
-    ) -> Tuple[
-        Dict[str, torch.Tensor], torch.Tensor, torch.Tensor, Dict[str, Any] | None
-    ]:
-        # goes through a RL step (includes all the base RL things such as get obs, apply actions, etc.
-        # args: actions to apply to the env
-        # returns: obs, rewards, resets, info
+    # Gymnasium methods (required from VecEnv)
 
-        if actions is None:
+    def reset(self) -> VecEnvObs:
+        # resets the entire task (i.e. beginning of training/playing)
+        # returns: the observations
+
+        super().reset()
+
+        self.env.reset()
+
+        # noinspection PyArgumentList
+        self.obs_buf = torch.zeros(
+            (self.num_envs, self.num_observations), dtype=torch.float32
+        )
+
+        return self.obs_buf.numpy()
+
+    def step_wait(self) -> VecEnvStepReturn:
+        if self.actions_buf is None:
             return (
-                {"obs": self.obs_buf},
-                self.rewards_buf,
-                self.dones_buf,
-                None,
+                self.obs_buf.numpy(),
+                self.rewards_buf.numpy(),
+                self.dones_buf.numpy(),
+                [],
             )
 
-        env_info = self.get_env_info()
         self.progress_buf += 1
+
+        # Ensure that the actions are within the action space
+        self.actions_buf = torch.clamp(
+            self.actions_buf,
+            torch.from_numpy(self.action_space.low),
+            torch.from_numpy(self.action_space.high),
+        )
 
         import random
 
@@ -125,24 +145,32 @@ class GenericTask(BaseTask):
         # (:, 0:3) -> linear acceleration
         # (:, 3:6) -> angular velocity
         # (:, 6:10) -> quaternion (WXYZ)
-        twip_imu_obs = self.env.step(actions_to_torque(actions * random.gauss(1.0, 0.065)), render=not self.headless).to(
-            device=self.device
-        )  # is on GPU, so all subsequent calculations will be on GPU
+        twip_imu_obs = self.env.step(
+            actions_to_torque(self.actions_buf * random.gauss(1.0, 0.065)),
+            render=not self.headless,
+        )
 
         # get the roll angle only
         twip_roll = roll_from_quat(twip_imu_obs[:, 6:10])
 
         self.obs_buf[:, 0] = twip_roll * random.gauss(1.0, 0.065)
-        self.obs_buf[:, 1] = twip_imu_obs[:, 5] * random.gauss(1.0, 0.065) # angular velocity on z-axis
-        self.obs_buf[:, 2] = actions[:, 0]
-        self.obs_buf[:, 3] = actions[:, 1]
+        self.obs_buf[:, 1] = twip_imu_obs[:, 5] * random.gauss(
+            1.0, 0.065
+        )  # angular velocity on z-axis
+        self.obs_buf[:, 2] = self.actions_buf[:, 0]
+        self.obs_buf[:, 3] = self.actions_buf[:, 1]
 
         # the smaller the difference between current orientation and stable orientation, the higher the reward
         self.rewards_buf, episode_info = compute_rewards_twip(
-            twip_roll, twip_imu_obs[:, 3], twip_imu_obs[:, 5], actions
+            twip_roll, twip_imu_obs[:, 3], twip_imu_obs[:, 5], self.actions_buf
         )
 
-        env_info["episode"] = episode_info
+        # Clip rewards to the specified range
+        self.rewards_buf = torch.clamp(
+            self.rewards_buf,
+            torch.from_numpy(self.reward_space.low),
+            torch.from_numpy(self.reward_space.high),
+        )
 
         # process failures (when falling)
         self.dones_buf = torch.where(torch.abs(twip_roll) > 0.5, True, False)
@@ -155,48 +183,43 @@ class GenericTask(BaseTask):
         if len(resets) > 0:
             self.env.reset(resets)
 
-        # clears the last 2 observations & the progress if the twips are reset
+        # clears the last 2 observations & the progress if any twip is reset
         self.obs_buf[resets, :] = 0.0
         self.progress_buf[resets] = 0
 
-        log_data = self.obs_buf[0].clone()
-        log_data = torch.cat((log_data, actions[0]), dim=0)
-
-        # self.data_logger.info(log_data.tolist())
-
         return (
-            {"obs": self.obs_buf},
-            self.rewards_buf,
-            self.dones_buf,
-            env_info,
+            self.obs_buf.numpy(),
+            self.rewards_buf.numpy(),
+            self.dones_buf.numpy(),
+            [{} for _ in range(self.num_envs)],
         )
 
-    def reset(self) -> Dict[str, torch.Tensor]:
-        # resets the entire task (i.e. beginning of training/playing)
-        # returns: the observations
-
-        super().reset()
-
-        self.env.reset()
-
-        obs = torch.zeros(
-            self.num_envs,
-            self.num_observations,
-            device=self.device,
-            dtype=torch.float32,
-        )
-
-        return {"obs": obs}
 
 @torch.jit.script
 def pwm_percent_to_torque(pwm_percent: torch.Tensor) -> torch.Tensor:
     # if any pwm_percent is less than 0.375, return 0
     # otherwise, return the torque
-    return torch.where(pwm_percent <= 0.375, 0.0, 0.653 + 0.507 * torch.log(pwm_percent))
+    # this follows empirical data
+    return 0.653 + 0.507 * torch.log(pwm_percent)
+
 
 @torch.jit.script
 def actions_to_torque(actions: torch.Tensor) -> torch.Tensor:
-    return torch.sign(actions) * pwm_percent_to_torque(torch.abs(actions))
+    # store the sign for later (for directions)
+    actions_sign = torch.sign(actions)
+
+    # map the actions to the PWM range [0.375, 1.0]
+    actions = torch.abs(actions)
+    actions = actions * 0.625 + 0.375
+
+    # convert the PWM to torque
+    actions = pwm_percent_to_torque(actions)
+
+    # apply the sign, for directions
+    actions = actions * actions_sign
+
+    return actions
+
 
 @torch.jit.script
 def compute_rewards_twip(
@@ -215,15 +238,14 @@ def compute_rewards_twip(
     # Normalized position (assume max distance is 5 units)
     # norm_position = torch.norm(position, dim=-1) / 5.0
 
-    # Base reward for staying upright
-    #upright_reward = 1.0 - torch.tanh(2 * torch.abs(roll))
-
     # Penalties
     roll_penalty = torch.tanh(6 * torch.abs(roll))
     ang_vel_penalty = torch.tanh(2 * torch.abs(ang_vel_z))
-    action_penalty = torch.tanh(torch.sum(torch.abs(actions_to_torque(actions)), dim=-1)) * 0.2
+    action_penalty = (
+        torch.tanh(torch.sum(torch.square(actions_to_torque(actions)), dim=-1)) * 0.2
+    )
     # position_penalty = torch.tanh(norm_position) * 0.2
-    #roll_velocity_penalty = torch.tanh(2 * torch.abs(roll_velocity)) * 0.3
+    # roll_velocity_penalty = torch.tanh(2 * torch.abs(roll_velocity)) * 0.3
 
     # Compute rewards
     rewards = (
@@ -240,8 +262,7 @@ def compute_rewards_twip(
     # rewards *= 1.0 + time_factor
 
     # Harsh penalty for falling
-    fall_penalty = torch.where(torch.abs(roll) > 0.5, -5.0, 0.0)
-    rewards += fall_penalty
+    rewards = torch.where(torch.abs(roll) > 0.5, -2.0, rewards)
 
     episode = {
         "roll": torch.median(torch.abs(roll)),
@@ -249,7 +270,7 @@ def compute_rewards_twip(
         "roll_penalty": torch.mean(roll_penalty),
         "ang_vel_z": torch.median(torch.abs(ang_vel_z)),
         "ang_vel_penalty": torch.mean(ang_vel_penalty),
-        "action_magnitude": torch.median(torch.sum(torch.abs(actions_to_torque(actions)), dim=-1)),
+        "action_magnitude": torch.median(torch.sum(torch.abs(actions), dim=-1)),
         "action_penalty": torch.mean(action_penalty),
         # "position": torch.median(norm_position),
         # "position_penalty": torch.mean(position_penalty),
