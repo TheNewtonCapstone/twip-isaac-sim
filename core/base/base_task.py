@@ -28,8 +28,6 @@ class BaseTask(VecEnv):
         playing_env_factory: Callable[..., BaseEnv],
         agent_factory: Callable[..., BaseAgent],
     ):
-        self.config = {}
-
         self.render_mode = "human"
 
         self.training_env_factory = training_env_factory
@@ -52,8 +50,6 @@ class BaseTask(VecEnv):
 
         self.num_observations: int = self.observation_space.shape[0]
         self.num_actions: int = self.action_space.shape[0]
-
-        self.domain_randomization: bool = self.config.get("domain_randomization", False)
 
         self.actions_buf: torch.Tensor
         self.rewards_buf: torch.Tensor
