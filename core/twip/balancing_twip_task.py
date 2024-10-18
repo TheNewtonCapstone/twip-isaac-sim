@@ -1,6 +1,6 @@
 from typing import Dict, Any, Tuple, Callable
 
-import gym
+import gymnasium
 import numpy as np
 import torch
 from core.base.base_agent import BaseAgent
@@ -10,12 +10,12 @@ from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.vec_env.base_vec_env import VecEnvStepReturn, VecEnvObs
 
 
-class GenericCallback(BaseCallback):
+class BalancingTwipCallback(BaseCallback):
     def __init__(self):
         super().__init__(verbose=2)
 
     def _on_step(self) -> bool:
-        task: GenericTask = self.training_env
+        task: BalancingTwipTask = self.training_env
 
         self.logger.record("rewards/mean", task.rewards_buf.mean().item())
         self.logger.record("rewards/median", torch.median(task.rewards_buf).item())
@@ -36,8 +36,7 @@ class GenericCallback(BaseCallback):
         return True
 
 
-# should be called BalancingTwipTask
-class GenericTask(BaseTask):
+class BalancingTwipTask(BaseTask):
     def __init__(
         self,
         headless: bool,
@@ -45,12 +44,11 @@ class GenericTask(BaseTask):
         num_envs: int,
         playing: bool,
         max_episode_length: int,
-        domain_randomization: Dict[str, Any],
         training_env_factory: Callable[..., BaseEnv],
         playing_env_factory: Callable[..., BaseEnv],
         agent_factory: Callable[..., BaseAgent],
     ):
-        observation_space = gym.spaces.Box(
+        observation_space = gymnasium.spaces.Box(
             low=np.array(
                 [
                     -np.pi,
@@ -70,12 +68,12 @@ class GenericTask(BaseTask):
         )
 
         num_actions = 2
-        action_space = gym.spaces.Box(
+        action_space = gymnasium.spaces.Box(
             low=np.ones(num_actions) * -1.0,
             high=np.ones(num_actions) * 1.0,
         )
 
-        reward_space = gym.spaces.Box(
+        reward_space = gymnasium.spaces.Box(
             low=np.array([-1.0]),
             high=np.array([1.0]),
         )
@@ -119,14 +117,14 @@ class GenericTask(BaseTask):
             (self.num_envs, self.num_observations), dtype=torch.float32
         )
 
-        return self.obs_buf.numpy()
+        return self.obs_buf.numpy().copy()
 
     def step_wait(self) -> VecEnvStepReturn:
         if self.actions_buf is None:
             return (
-                self.obs_buf.numpy(),
-                self.rewards_buf.numpy(),
-                self.dones_buf.numpy(),
+                self.obs_buf.numpy().copy(),
+                self.rewards_buf.numpy().copy(),
+                self.dones_buf.numpy().copy(),
                 [],
             )
 
@@ -188,9 +186,9 @@ class GenericTask(BaseTask):
         self.progress_buf[resets] = 0
 
         return (
-            self.obs_buf.numpy(),
-            self.rewards_buf.numpy(),
-            self.dones_buf.numpy(),
+            self.obs_buf.numpy().copy(),
+            self.rewards_buf.numpy().copy(),
+            self.dones_buf.numpy().copy(),
             [{} for _ in range(self.num_envs)],
         )
 
