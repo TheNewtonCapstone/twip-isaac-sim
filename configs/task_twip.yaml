@@ -5,7 +5,13 @@ seed: 14321
 
 n_envs: 128
 timesteps_per_env: 1_000_000
-base_lr: 1e-4
+base_lr: 3e-4
+
+delay:
+  enabled: True
+  obs_delay_range: [1, 8] # sample range of time steps to delay the observation (same for action)
+  act_delay_range: [1, 2]
+  instant_rewards: False # should the rewards be calculated on the brain or remote actor?
 
 ppo:
   n_steps: 512

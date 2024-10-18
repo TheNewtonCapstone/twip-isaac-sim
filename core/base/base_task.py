@@ -1,6 +1,6 @@
 from typing import Dict, Any, Callable, List, Optional, Sequence, Type
 
-import gymnasium as gym
+import gymnasium
 import numpy as np
 import torch
 from core.base.base_agent import BaseAgent
@@ -21,9 +21,9 @@ class BaseTask(VecEnv):
         num_envs: int,
         playing: bool,
         max_episode_length: int,
-        observation_space: gym.spaces.Box,
-        action_space: gym.spaces.Box,
-        reward_space: gym.spaces.Box,
+        observation_space: gymnasium.spaces.Space,
+        action_space: gymnasium.spaces.Space,
+        reward_space: gymnasium.spaces.Space,
         training_env_factory: Callable[..., BaseEnv],
         playing_env_factory: Callable[..., BaseEnv],
         agent_factory: Callable[..., BaseAgent],
@@ -41,9 +41,9 @@ class BaseTask(VecEnv):
         self.device: str = device
         self.playing: bool = playing
 
-        self.observation_space: gym.spaces.Box = observation_space
-        self.action_space: gym.spaces.Box = action_space
-        self.reward_space: gym.spaces.Box = reward_space
+        self.observation_space: gymnasium.spaces.Space = observation_space
+        self.action_space: gymnasium.spaces.Space = action_space
+        self.reward_space: gymnasium.spaces.Space = reward_space
 
         self.num_envs: int = num_envs
         self.max_episode_length: int = max_episode_length
@@ -132,7 +132,7 @@ class BaseTask(VecEnv):
         ]
 
     def env_is_wrapped(
-        self, wrapper_class: Type[gym.Wrapper], indices: VecEnvIndices = None
+        self, wrapper_class: Type[gymnasium.Wrapper], indices: VecEnvIndices = None
     ) -> List[bool]:
         """Check if worker environments are wrapped with a given wrapper"""
         target_envs = self._get_target_envs(indices)
@@ -141,6 +141,6 @@ class BaseTask(VecEnv):
 
         return [env_util.is_wrapped(env_i, wrapper_class) for env_i in target_envs]
 
-    def _get_target_envs(self, indices: VecEnvIndices) -> List[gym.Env]:
+    def _get_target_envs(self, indices: VecEnvIndices) -> List[gymnasium.Env]:
         indices = self._get_indices(indices)
         return [self.envs[i] for i in indices]
