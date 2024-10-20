@@ -6,6 +6,7 @@ import torch
 from core.base.base_agent import BaseAgent
 from core.base.base_env import BaseEnv
 from core.base.base_task import BaseTask
+from core.utils.math import gaussian_distribute
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.vec_env.base_vec_env import VecEnvStepReturn, VecEnvObs
 
@@ -22,15 +23,18 @@ class BalancingTwipCallback(BaseCallback):
         self.logger.record("rewards/sum", task.rewards_buf.sum().item())
 
         self.logger.record("metrics/roll_mean", task.obs_buf[:, 0].mean().item())
-        self.logger.record("metrics/ang_vel_mean", task.obs_buf[:, 1].mean().item())
-
-        combined_actions = torch.sum(torch.abs(task.actions_buf), dim=-1)
         self.logger.record(
-            "metrics/action_magnitude_mean", combined_actions.mean().item()
+            "metrics/ang_vel_roll_mean", task.obs_buf[:, 1].mean().item()
         )
+        self.logger.record("metrics/ang_vel_yaw_mean", task.obs_buf[:, 2].mean().item())
+
+        # combined_actions = torch.sum(torch.abs(task.actions_buf), dim=-1)
+        # self.logger.record(
+        #    "metrics/action_magnitude_mean", combined_actions.mean().item()
+        # )
 
         # save the model intermittently
-        if self.model.num_timesteps % (64 * task.num_envs) == 0:
+        if self.model.num_timesteps % (512 * task.num_envs) == 0:
             self.model.save(f"{self.logger.dir}/model_{self.model.num_timesteps}.zip")
 
         return True
@@ -53,16 +57,18 @@ class BalancingTwipTask(BaseTask):
                 [
                     -np.pi,
                     -np.Inf,
-                    -1.0,
-                    -1.0,
+                    -np.Inf,
+                    # -1.0,
+                    # -1.0,
                 ]
             ),
             high=np.array(
                 [
                     np.pi,
                     np.Inf,
-                    1.0,
-                    1.0,
+                    np.Inf,
+                    # 1.0,
+                    # 1.0,
                 ]
             ),
         )
@@ -74,7 +80,7 @@ class BalancingTwipTask(BaseTask):
         )
 
         reward_space = gymnasium.spaces.Box(
-            low=np.array([-1.0]),
+            low=np.array([-2.0]),
             high=np.array([1.0]),
         )
 
@@ -112,7 +118,6 @@ class BalancingTwipTask(BaseTask):
 
         self.env.reset()
 
-        # noinspection PyArgumentList
         self.obs_buf = torch.zeros(
             (self.num_envs, self.num_observations), dtype=torch.float32
         )
@@ -137,30 +142,28 @@ class BalancingTwipTask(BaseTask):
             torch.from_numpy(self.action_space.high),
         )
 
-        import random
-
         # shape of twip_imu_obs: (num_envs, 10)
         # (:, 0:3) -> linear acceleration
         # (:, 3:6) -> angular velocity
         # (:, 6:10) -> quaternion (WXYZ)
         twip_imu_obs = self.env.step(
-            actions_to_torque(self.actions_buf * random.gauss(1.0, 0.065)),
+            actions_to_torque(gaussian_distribute(self.actions_buf)),
             render=not self.headless,
         )
 
-        # get the roll angle only
         twip_roll = roll_from_quat(twip_imu_obs[:, 6:10])
+        twip_roll_velocity = twip_imu_obs[:, 3]
+        twip_yaw_velocity = twip_imu_obs[:, 5]
 
-        self.obs_buf[:, 0] = twip_roll * random.gauss(1.0, 0.065)
-        self.obs_buf[:, 1] = twip_imu_obs[:, 5] * random.gauss(
-            1.0, 0.065
-        )  # angular velocity on z-axis
-        self.obs_buf[:, 2] = self.actions_buf[:, 0]
-        self.obs_buf[:, 3] = self.actions_buf[:, 1]
+        self.obs_buf[:, 0] = gaussian_distribute(twip_roll)
+        self.obs_buf[:, 1] = gaussian_distribute(twip_roll_velocity)
+        self.obs_buf[:, 2] = gaussian_distribute(twip_yaw_velocity)
+        # self.obs_buf[:, 3] = self.actions_buf[:, 0]
+        # self.obs_buf[:, 4] = self.actions_buf[:, 1]
 
         # the smaller the difference between current orientation and stable orientation, the higher the reward
-        self.rewards_buf, episode_info = compute_rewards_twip(
-            twip_roll, twip_imu_obs[:, 3], twip_imu_obs[:, 5], self.actions_buf
+        self.rewards_buf = compute_rewards_twip(
+            twip_roll, twip_roll_velocity, twip_yaw_velocity, self.actions_buf
         )
 
         # Clip rewards to the specified range
@@ -170,11 +173,13 @@ class BalancingTwipTask(BaseTask):
             torch.from_numpy(self.reward_space.high),
         )
 
-        # process failures (when falling)
-        self.dones_buf = torch.where(torch.abs(twip_roll) > 0.5, True, False)
+        # process failures (when falling) # TODO: check if this is being used correctly
+        self.dones_buf = torch.where(
+            torch.abs(twip_roll) > 0.5, True, False
+        )  # terminated
         self.dones_buf = torch.where(
             self.progress_buf >= self.max_episode_length - 1, True, self.dones_buf
-        )
+        )  # truncated
 
         # creates a new tensor with only the indices of the environments that are done
         resets = self.dones_buf.nonzero(as_tuple=False).flatten()
@@ -225,7 +230,7 @@ def compute_rewards_twip(
     ang_vel_x: torch.Tensor,
     ang_vel_z: torch.Tensor,
     actions: torch.Tensor,
-) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+) -> torch.Tensor:
     # computes the rewards based on the roll, angular velocity and actions
     # args: roll, angular velocity, actions
     # returns: rewards
@@ -238,10 +243,11 @@ def compute_rewards_twip(
 
     # Penalties
     roll_penalty = torch.tanh(6 * torch.abs(roll))
-    ang_vel_penalty = torch.tanh(2 * torch.abs(ang_vel_z))
-    action_penalty = (
-        torch.tanh(torch.sum(torch.square(actions_to_torque(actions)), dim=-1)) * 0.2
-    )
+    roll_velocity_penalty = torch.tanh(torch.abs(roll_velocity)) * 0.2
+    ang_vel_penalty = torch.tanh(2 * torch.abs(ang_vel_z)) * 0.8
+    # action_penalty = (
+    #    torch.tanh(torch.sum(torch.square(actions_to_torque(actions)), dim=-1)) * 0.2
+    # )
     # position_penalty = torch.tanh(norm_position) * 0.2
     # roll_velocity_penalty = torch.tanh(2 * torch.abs(roll_velocity)) * 0.3
 
@@ -249,8 +255,9 @@ def compute_rewards_twip(
     rewards = (
         1.0
         - roll_penalty
+        - roll_velocity_penalty
         - ang_vel_penalty
-        - action_penalty
+        # - action_penalty
         # - position_penalty
         # - roll_velocity_penalty
     )
@@ -262,23 +269,7 @@ def compute_rewards_twip(
     # Harsh penalty for falling
     rewards = torch.where(torch.abs(roll) > 0.5, -2.0, rewards)
 
-    episode = {
-        "roll": torch.median(torch.abs(roll)),
-        "roll_var": torch.var(torch.abs(roll)),
-        "roll_penalty": torch.mean(roll_penalty),
-        "ang_vel_z": torch.median(torch.abs(ang_vel_z)),
-        "ang_vel_penalty": torch.mean(ang_vel_penalty),
-        "action_magnitude": torch.median(torch.sum(torch.abs(actions), dim=-1)),
-        "action_penalty": torch.mean(action_penalty),
-        # "position": torch.median(norm_position),
-        # "position_penalty": torch.mean(position_penalty),
-        "roll_velocity": torch.median(torch.abs(roll_velocity)),
-        # "roll_velocity_penalty": torch.mean(roll_velocity_penalty),
-        # "time_factor": torch.mean(time_factor),
-        # "upright_reward": torch.mean(upright_reward),
-    }
-
-    return rewards, episode
+    return rewards
 
 
 @torch.jit.script
