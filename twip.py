@@ -8,12 +8,13 @@ from core.envs.procedural_env import ProceduralEnv
 from core.pid.pid import PidController
 from core.terrain.flat_terrain import FlatTerrainBuilder
 from core.terrain.perlin_terrain import PerlinTerrainBuilder
-from core.twip.generic_task import (
-    GenericTask,
-    GenericCallback,
+from core.twip.balancing_twip_task import (
+    BalancingTwipTask,
+    BalancingTwipCallback,
     actions_to_torque,
     roll_from_quat,
 )
+from core.wrappers.tasks import RandomDelayVecWrapper
 from core.twip.twip_agent import TwipAgent
 from core.utils.config import load_config
 from core.utils.path import (
@@ -276,23 +277,37 @@ if __name__ == "__main__":
     )
 
     # task used for either training or playing
-    task = GenericTask(
+    task = BalancingTwipTask(
         headless=cli_args.headless,
         device=rl_config["device"],
         num_envs=rl_config["n_envs"],
         playing=playing,
         max_episode_length=rl_config["ppo"]["n_steps"],
-        domain_randomization=randomization_config,
         training_env_factory=procedural_env_factory,
         playing_env_factory=generic_env_factory,
         agent_factory=twip_agent_factory,
     )
-    callback = GenericCallback()
+    callback = BalancingTwipCallback()
 
     task.construct()
 
     # we're not exporting nor purely simulating, so we're training
     if training:
+        if rl_config["delay"]["enabled"]:
+            list_obs_delay_range = rl_config["delay"]["obs_delay_range"]
+            list_act_delay_range = rl_config["delay"]["act_delay_range"]
+            instant_rewards = rl_config["delay"]["instant_rewards"]
+
+            obs_delay_range = range(list_obs_delay_range[0], list_obs_delay_range[1])
+            act_delay_range = range(list_act_delay_range[0], list_act_delay_range[1])
+
+            task = RandomDelayVecWrapper(
+                task,
+                obs_delay_range=obs_delay_range,
+                act_delay_range=act_delay_range,
+                instant_rewards=instant_rewards,
+            )
+
         model = PPO(
             rl_config["policy"],
             task,
