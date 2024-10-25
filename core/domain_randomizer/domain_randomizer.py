@@ -1,6 +1,3 @@
-from typing import Callable
-
-import torch
 import numpy as np
 
 
@@ -123,12 +120,11 @@ class DomainRandomizer:
 
             with self.dr.gate.on_interval(interval=self.frequency):
                 for body in self.on_interval_properties:
-
                     if "articulation_view_properties" in body:
                         for prop in self.on_interval_properties[body]:
                             body_properties = self.on_interval_properties.get(body, {})
                             args = body_properties.get(prop, {})
-                            
+
                             self.dr.physics_view.randomize_articulation_view(
                                 view_name=self.twip_art_view.name,
                                 operation=str(prop),
@@ -138,7 +134,7 @@ class DomainRandomizer:
                         for prop in self.on_interval_properties[body]:
                             body_properties = self.on_interval_properties.get(body, {})
                             args = body_properties.get(prop, {})
-                            
+
                             self.dr.physics_view.randomize_articulation_view(
                                 view_name=self.twip_art_view.name,
                                 operation=str(prop),
@@ -147,9 +143,6 @@ class DomainRandomizer:
 
             with self.dr.gate.on_env_reset():
                 for body in self.on_reset_properties:
-                    
-                    
-
                     if "articulation_view_properties" in body:
                         for prop in self.on_reset_properties[body]:
                             body_properties = self.on_reset_properties.get(body, {})
@@ -165,37 +158,11 @@ class DomainRandomizer:
                             body_properties = self.on_reset_properties.get(body, {})
                             args = body_properties.get(prop, {})
 
-                            
-
                             self.dr.physics_view.randomize_articulation_view(
                                 view_name=self.twip_art_view.name,
                                 operation=str(prop),
                                 **args,
                             )
-
-            # with self.dr.gate.on_env_reset():
-            #     for body in self.on_reset_properties:
-
-            #         if "articulation_view_properties" in body:
-            #             for prop in self.on_reset_properties[body]:
-            #                 body_properties = self.on_reset_properties.get(body, {})
-            #                 args = body_properties.get(prop, {})
-
-            #                 self.dr.physics_view.randomize_articulation_view(
-            #                     view_name=self.twip_art_view.name,
-            #                     operation=str(prop),
-            #                     **args,
-            #                 )
-            #         if "dof_properties" in body:
-            #             for prop in self.on_reset_properties[body]:
-            #                 body_properties = self.on_reset_properties.get(body, {})
-            #                 args = body_properties.get(prop, {})
-
-            #                 self.dr.physics_view.randomize_articulation_view(
-            #                     view_name=self.twip_art_view.name,
-            #                     operation=str(prop),
-            #                     **args,
-            #                 )
 
     def step_randomization(self):
         self.reset_inds = []
