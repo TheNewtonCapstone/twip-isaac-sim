@@ -226,32 +226,21 @@ class ProceduralEnv(BaseEnv):
             torch.zeros(num_to_reset, 2), indices=indices
         )
 
-        def euler_to_quat(euler: torch.Tensor) -> torch.Tensor:
-            from math import cos, sin
+        from gymnasium.spaces import Box
 
-            roll = euler[:, 0]
-            pitch = euler[:, 1]
-            yaw = euler[:, 2]
+        # generate a tensor with random values for the agents' roll & yaw within the specified range
+        rand_yaws = Box(low=-math.pi, high=math.pi, shape=(num_to_reset,)).sample()
+        max_roll = 0.35
+        rand_rolls = Box(low=-max_roll, high=max_roll, shape=(num_to_reset,)).sample()
 
-            cy = cos(yaw * 0.5)
-            sy = sin(yaw * 0.5)
-            cp = cos(pitch * 0.5)
-            sp = sin(pitch * 0.5)
-            cr = cos(roll * 0.5)
-            sr = sin(roll * 0.5)
+        from omni.isaac.core.utils.torch import quat_from_euler_xyz
 
-            return torch.tensor(
-                [
-                    cy * cp * cr + sy * sp * sr,
-                    cy * cp * sr - sy * sp * cr,
-                    sy * cp * sr + cy * sp * cr,
-                    sy * cp * cr - cy * sp * sr,
-                ]
-            )
-
-        # orientation at rest for the agents
-        orientations = torch.tile(
-            torch.tensor([0.98037, -0.18795, -0.01142, 0.05846]), (num_to_reset, 1)
+        # convert the euler angles to quaternions
+        orientations = quat_from_euler_xyz(
+            torch.from_numpy(rand_rolls),
+            torch.zeros((num_to_reset,)),
+            torch.from_numpy(rand_yaws),
+            extrinsic=True,
         )
 
         # ensure that we're on the same device (since we don't know which one in advance)

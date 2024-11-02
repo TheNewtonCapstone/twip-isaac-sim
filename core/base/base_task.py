@@ -1,16 +1,17 @@
 from typing import Dict, Any, Callable, List, Optional, Sequence, Type
 
-import gymnasium
-import numpy as np
-import torch
-from core.base.base_agent import BaseAgent
-from core.base.base_env import BaseEnv
 from stable_baselines3.common.vec_env import VecEnv
 from stable_baselines3.common.vec_env.base_vec_env import (
     VecEnvIndices,
     VecEnvStepReturn,
     VecEnvObs,
 )
+
+import gymnasium
+import numpy as np
+import torch
+from core.base.base_agent import BaseAgent
+from core.base.base_env import BaseEnv
 
 
 class BaseTask(VecEnv):
@@ -22,8 +23,8 @@ class BaseTask(VecEnv):
         playing: bool,
         max_episode_length: int,
         observation_space: gymnasium.spaces.Space,
-        action_space: gymnasium.spaces.Space,
-        reward_space: gymnasium.spaces.Space,
+        action_space: gymnasium.spaces.Box,
+        reward_space: gymnasium.spaces.Box,
         training_env_factory: Callable[..., BaseEnv],
         playing_env_factory: Callable[..., BaseEnv],
         agent_factory: Callable[..., BaseAgent],
@@ -35,15 +36,15 @@ class BaseTask(VecEnv):
         self.agent_factory = agent_factory
 
         self.agent: BaseAgent | None = None
-        self.env: BaseEnv | None = None
+        self.env: BaseEnv | None = None  # TODO: is this necessary?
 
         self.headless: bool = headless
         self.device: str = device
         self.playing: bool = playing
 
         self.observation_space: gymnasium.spaces.Space = observation_space
-        self.action_space: gymnasium.spaces.Space = action_space
-        self.reward_space: gymnasium.spaces.Space = reward_space
+        self.action_space: gymnasium.spaces.Box = action_space
+        self.reward_space: gymnasium.spaces.Box = reward_space
 
         self.num_envs: int = num_envs
         self.max_episode_length: int = max_episode_length
@@ -51,13 +52,15 @@ class BaseTask(VecEnv):
         self.num_observations: int = self.observation_space.shape[0]
         self.num_actions: int = self.action_space.shape[0]
 
-        self.actions_buf: torch.Tensor
-        self.rewards_buf: torch.Tensor
-        self.dones_buf: torch.Tensor
-        self.progress_buf: torch.Tensor
-        self.infos_buf: List[Dict[str, Any]]
-
-        self._setup_buffers()
+        self.actions_buf: torch.Tensor = torch.zeros(
+            (self.num_envs, self.num_actions), dtype=torch.float32
+        )
+        self.rewards_buf: torch.Tensor = torch.zeros(self.num_envs, dtype=torch.float32)
+        self.dones_buf: torch.Tensor = torch.zeros(self.num_envs, dtype=torch.bool)
+        self.progress_buf: torch.Tensor = torch.zeros(
+            self.num_envs, dtype=torch.float32
+        )
+        self.infos_buf: List[Dict[str, Any]] = [{} for _ in range(self.num_envs)]
 
         super(BaseTask, self).__init__(
             num_envs=num_envs,
@@ -67,19 +70,6 @@ class BaseTask(VecEnv):
 
     def construct(self) -> bool:
         pass
-
-    def _setup_buffers(self) -> None:
-        self.actions_buf = torch.zeros(
-            (self.num_envs, self.num_actions), dtype=torch.float32
-        )
-        self.obs_buf = torch.zeros(
-            (self.num_envs, self.num_observations),
-            dtype=torch.float32,
-        )
-        self.rewards_buf = torch.zeros((self.num_envs), dtype=torch.float32)
-        self.dones_buf = torch.zeros((self.num_envs), dtype=torch.bool)
-        self.progress_buf = torch.zeros((self.num_envs), dtype=torch.float32)
-        self.infos_buf = [{} for _ in range(self.num_envs)]
 
     def __str__(self):
         return f"{self.__class__.__name__} with {self.num_envs} environments, {self.num_observations} observations, {self.num_actions} actions, {self.num_states} states."
@@ -126,6 +116,7 @@ class BaseTask(VecEnv):
     ) -> List[Any]:
         """Call instance methods of vectorized environments."""
         target_envs = self._get_target_envs(indices)
+        print(f"Calling {method_name} on {len(target_envs)} environments")
         return [
             getattr(env_i, method_name)(*method_args, **method_kwargs)
             for env_i in target_envs
