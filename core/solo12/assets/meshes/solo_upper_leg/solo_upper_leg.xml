@@ -1,0 +1,17 @@
+<mujoco model="solo_upper_leg">
+  <geom mesh="solo_upper_leg_4" material="metal_silver" class="visual"/>
+  <geom mesh="solo_upper_leg_5" material="metal_grey" class="visual"/>
+  <geom mesh="solo_upper_leg_6" material="metal_gold" class="visual"/>
+  <geom mesh="solo_upper_leg_7" material="metal_dark" class="visual"/>
+  <geom mesh="solo_upper_leg_12" material="metal_dark" class="visual"/>
+  <geom mesh="solo_upper_leg_16" material="metal_grey" class="visual"/>
+  <geom mesh="solo_upper_leg_17" material="pla_grey" class="visual"/>
+  <geom mesh="solo_upper_leg_18" material="pla_white" class="visual"/>
+  <geom mesh="solo_upper_leg_19" material="metal_grey" class="visual"/>
+  <geom mesh="solo_upper_leg_collision_0" class="collision"/>
+  <geom mesh="solo_upper_leg_collision_1" class="collision"/>
+  <geom mesh="solo_upper_leg_collision_2" class="collision"/>
+  <geom mesh="solo_upper_leg_collision_3" class="collision"/>
+  <geom mesh="solo_upper_leg_collision_4" class="collision"/>
+  <geom mesh="solo_upper_leg_collision_5" class="collision"/>
+</mujoco>

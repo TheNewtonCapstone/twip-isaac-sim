@@ -93,17 +93,17 @@ if __name__ == "__main__":
 
     simulating = cli_args.sim_only
     exporting = cli_args.export_onnx
-    playing = not exporting and cli_args.play
+    playing = cli_args.play
     training = not exporting and not cli_args.play
     headless = (
         cli_args.headless or cli_args.export_onnx
     )  # if we're exporting, don't show the GUI
 
-    assert (
-        playing or exporting
-    ) and cli_args.checkpoint is not None, (
-        "Please provide a checkpoint to play/export the agent."
-    )
+    # assert (
+    #     playing or exporting
+    # ) and cli_args.checkpoint is not None, (
+    #     "Please provide a checkpoint to play/export the agent."
+    # )
 
     # override config with CLI num_envs, if specified
     if cli_args.num_envs != -1:

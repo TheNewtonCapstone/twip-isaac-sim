@@ -1,0 +1,81 @@
+<meshes>
+    <!-- solo_12_base -->
+    <mesh file="solo_12_base/solo_12_base_7.obj"/>
+    <mesh file="solo_12_base/solo_12_base_8.obj"/>
+    <mesh file="solo_12_base/solo_12_base_9.obj"/>
+    <mesh file="solo_12_base/solo_12_base_10.obj"/>
+    <mesh file="solo_12_base/solo_12_base_13.obj"/>
+    <mesh file="solo_12_base/solo_12_base_15.obj"/>
+    <mesh file="solo_12_base/solo_12_base_16.obj"/>
+    <mesh file="solo_12_base/solo_12_base_18.obj"/>
+    <mesh file="solo_12_base/solo_12_base_19.obj"/>
+    <mesh file="solo_12_base/solo_12_base_20.obj"/>
+    <mesh file="solo_12_base/solo_12_base_21.obj"/>
+    <mesh file="solo_12_base/solo_12_base_22.obj"/>
+    <mesh file="solo_12_base/solo_12_base_23.obj"/>
+    <mesh file="solo_12_base/solo_12_base_24.obj"/>
+    <mesh file="solo_12_base/solo_12_base_25.obj"/>
+    <mesh file="solo_12_base/solo_12_base_26.obj"/>
+    <mesh file="solo_12_base/solo_12_base_27.obj"/>
+    <mesh file="solo_12_base/solo_12_base_collision_0.obj"/>
+    <mesh file="solo_12_base/solo_12_base_collision_1.obj"/>
+    <mesh file="solo_12_base/solo_12_base_collision_2.obj"/>
+    <mesh file="solo_12_base/solo_12_base_collision_3.obj"/>
+    <mesh file="solo_12_base/solo_12_base_collision_4.obj"/>
+    <mesh file="solo_12_base/solo_12_base_collision_5.obj"/>
+    <mesh file="solo_12_base/solo_12_base_collision_6.obj"/>
+    <mesh file="solo_12_base/solo_12_base_collision_7.obj"/>
+    <mesh file="solo_12_base/solo_12_base_collision_8.obj"/>
+    <mesh file="solo_12_base/solo_12_base_collision_9.obj"/>
+    <mesh file="solo_12_base/solo_12_base_collision_10.obj"/>
+    <mesh file="solo_12_base/solo_12_base_collision_11.obj"/>
+
+    <!-- solo_lower_leg_v2 -->
+    <mesh file="solo_lower_leg_v2/solo_lower_leg_v2_0.obj"/>
+    <mesh file="solo_lower_leg_v2/solo_lower_leg_v2_1.obj"/>
+    <mesh file="solo_lower_leg_v2/solo_lower_leg_v2_2.obj"/>
+    <mesh file="solo_lower_leg_v2/solo_lower_leg_v2_collision_0.obj"/>
+    <mesh file="solo_lower_leg_v2/solo_lower_leg_v2_collision_1.obj"/>
+    <mesh file="solo_lower_leg_v2/solo_lower_leg_v2_collision_2.obj"/>
+    <mesh file="solo_lower_leg_v2/solo_lower_leg_v2_collision_3.obj"/>
+    <mesh file="solo_lower_leg_v2/solo_lower_leg_v2_collision_4.obj"/>
+    <mesh file="solo_lower_leg_v2/solo_lower_leg_v2_collision_5.obj"/>
+
+    <!-- solo_upper_leg -->
+    <mesh file="solo_upper_leg/solo_upper_leg_4.obj"/>
+    <mesh file="solo_upper_leg/solo_upper_leg_5.obj"/>
+    <mesh file="solo_upper_leg/solo_upper_leg_6.obj"/>
+    <mesh file="solo_upper_leg/solo_upper_leg_7.obj"/>
+    <mesh file="solo_upper_leg/solo_upper_leg_12.obj"/>
+    <mesh file="solo_upper_leg/solo_upper_leg_16.obj"/>
+    <mesh file="solo_upper_leg/solo_upper_leg_17.obj"/>
+    <mesh file="solo_upper_leg/solo_upper_leg_18.obj"/>
+    <mesh file="solo_upper_leg/solo_upper_leg_19.obj"/>
+    <mesh file="solo_upper_leg/solo_upper_leg_collision_0.obj"/>
+    <mesh file="solo_upper_leg/solo_upper_leg_collision_1.obj"/>
+    <mesh file="solo_upper_leg/solo_upper_leg_collision_2.obj"/>
+    <mesh file="solo_upper_leg/solo_upper_leg_collision_3.obj"/>
+    <mesh file="solo_upper_leg/solo_upper_leg_collision_4.obj"/>
+    <mesh file="solo_upper_leg/solo_upper_leg_collision_5.obj"/>
+
+    <!-- solo12_hip_fe -->
+    <mesh file="solo12_hip_fe/solo12_hip_fe_0.obj"/>
+    <mesh file="solo12_hip_fe/solo12_hip_fe_1.obj"/>
+    <mesh file="solo12_hip_fe/solo12_hip_fe_3.obj"/>
+    <mesh file="solo12_hip_fe/solo12_hip_fe_7.obj"/>
+    <mesh file="solo12_hip_fe/solo12_hip_fe_8.obj"/>
+    <mesh file="solo12_hip_fe/solo12_hip_fe_10.obj"/>
+    <mesh file="solo12_hip_fe/solo12_hip_fe_11.obj"/>
+    <mesh file="solo12_hip_fe/solo12_hip_fe_12.obj"/>
+    <mesh file="solo12_hip_fe/solo12_hip_fe_13.obj"/>
+    <mesh file="solo12_hip_fe/solo12_hip_fe_14.obj"/>
+    <mesh file="solo12_hip_fe/solo12_hip_fe_collision_0.obj"/>
+    <mesh file="solo12_hip_fe/solo12_hip_fe_collision_1.obj"/>
+    <mesh file="solo12_hip_fe/solo12_hip_fe_collision_2.obj"/>
+    <mesh file="solo12_hip_fe/solo12_hip_fe_collision_3.obj"/>
+    <mesh file="solo12_hip_fe/solo12_hip_fe_collision_4.obj"/>
+    <mesh file="solo12_hip_fe/solo12_hip_fe_collision_5.obj"/>
+	
+	<!-- hip_adapter -->
+	<mesh file="hip_adapter/hip_adapter.obj"/>
+</meshes>

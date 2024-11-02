@@ -1,0 +1,18 @@
+<mujoco model="solo12_hip_fe">
+  <geom mesh="solo12_hip_fe_0" material="metal_grey" class="visual"/>
+  <geom mesh="solo12_hip_fe_1" material="pla_grey" class="visual"/>
+  <geom mesh="solo12_hip_fe_3" material="metal_grey" class="visual"/>
+  <geom mesh="solo12_hip_fe_7" material="pla_white" class="visual"/>
+  <geom mesh="solo12_hip_fe_8" material="metal_silver" class="visual"/>
+  <geom mesh="solo12_hip_fe_10" material="metal_dark" class="visual"/>
+  <geom mesh="solo12_hip_fe_11" material="metal_gold" class="visual"/>
+  <geom mesh="solo12_hip_fe_12" material="metal_dark" class="visual"/>
+  <geom mesh="solo12_hip_fe_13" material="metal_dark" class="visual"/>
+  <geom mesh="solo12_hip_fe_14" material="metal_dark" class="visual"/>
+  <geom mesh="solo12_hip_fe_collision_0" class="collision"/>
+  <geom mesh="solo12_hip_fe_collision_1" class="collision"/>
+  <geom mesh="solo12_hip_fe_collision_2" class="collision"/>
+  <geom mesh="solo12_hip_fe_collision_3" class="collision"/>
+  <geom mesh="solo12_hip_fe_collision_4" class="collision"/>
+  <geom mesh="solo12_hip_fe_collision_5" class="collision"/>
+</mujoco>

@@ -1,0 +1,31 @@
+<mujoco model="solo_12_base">
+  <geom mesh="solo_12_base_7" material="metal_dark" class="visual"/>
+  <geom mesh="solo_12_base_8" material="metal_gold" class="visual"/>
+  <geom mesh="solo_12_base_9" material="metal_dark" class="visual"/>
+  <geom mesh="solo_12_base_10" material="metal_dark" class="visual"/>
+  <geom mesh="solo_12_base_13" material="pla_white" class="visual"/>
+  <geom mesh="solo_12_base_15" material="metal_grey" class="visual"/>
+  <geom mesh="solo_12_base_16" material="pla_grey" class="visual"/>
+  <geom mesh="solo_12_base_18" material="metal_grey" class="visual"/>
+  <geom mesh="solo_12_base_19" material="metal_silver" class="visual"/>
+  <geom mesh="solo_12_base_20" material="pcb_green" class="visual"/>
+  <geom mesh="solo_12_base_21" material="metal_grey" class="visual"/>
+  <geom mesh="solo_12_base_22" material="pla_white" class="visual"/>
+  <geom mesh="solo_12_base_23" material="pcb_purple" class="visual"/>
+  <geom mesh="solo_12_base_24" material="metal_dark" class="visual"/>
+  <geom mesh="solo_12_base_25" material="metal_silver" class="visual"/>
+  <geom mesh="solo_12_base_26" material="metal_grey" class="visual"/>
+  <geom mesh="solo_12_base_27" material="pla_grey" class="visual"/>
+  <geom mesh="solo_12_base_collision_0" class="collision"/>
+  <geom mesh="solo_12_base_collision_1" class="collision"/>
+  <geom mesh="solo_12_base_collision_2" class="collision"/>
+  <geom mesh="solo_12_base_collision_3" class="collision"/>
+  <geom mesh="solo_12_base_collision_4" class="collision"/>
+  <geom mesh="solo_12_base_collision_5" class="collision"/>
+  <geom mesh="solo_12_base_collision_6" class="collision"/>
+  <geom mesh="solo_12_base_collision_7" class="collision"/>
+  <geom mesh="solo_12_base_collision_8" class="collision"/>
+  <geom mesh="solo_12_base_collision_9" class="collision"/>
+  <geom mesh="solo_12_base_collision_10" class="collision"/>
+  <geom mesh="solo_12_base_collision_11" class="collision"/>
+</mujoco>
