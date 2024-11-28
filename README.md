@@ -29,7 +29,7 @@ This repo contains the code and configuration used during our journey of develop
 ### Running Isaac Sim
 The entry point of our project is `twip.py`. To run our project you must configure the environment:
 - `conda activate isaac-sim`
-- `source _isaac_sim/setup_conda_env.sh`
+- `source setup_conda_env.sh`
 - `python twip.py --sim-only --num-envs 4`
 
 `--sim-only` is used to run the simluation alone without any reinforcement learning. `--num-envs` specifies the number of twip environments within the simulation. To see all the options, run `twip.py --help`.
